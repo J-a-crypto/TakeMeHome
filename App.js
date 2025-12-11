@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from './screens/HomeScreen';
-import PetListScreen from './screens/Screen2';
+import PetListScreen from './screens/PetListScreen';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const Stack = createNativeStackNavigator();
