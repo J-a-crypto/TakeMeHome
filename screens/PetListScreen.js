@@ -1,12 +1,14 @@
 // I know this will be where all her pets will be stored but i don't know what to call it 
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import React from 'react';
+import Header from '../components/Header';
 
 export default function PetListScreen({ navigation }) {
     return (
         //Every pet will have their own Name (chosen by user), picture, age(time since adopted), hunger level, happiness level, and boredom level)
         //So the easiest and most efficient way to save this info would be to have each pet as a TouchableOpacity component that when clicked opens a new screen with more detailed info and options for that specific pet
         <View style={styles.container}>
+            <Header title={"PetList"} onBack={() => navigation.navigate("Home")} />
             <Text style={styles.title}>Your Pets</Text>
             <Text>List of pets will be displayed here.</Text>
             <TouchableOpacity style={styles.petShow} onPress={() => navigation.navigate('PetHome')}>

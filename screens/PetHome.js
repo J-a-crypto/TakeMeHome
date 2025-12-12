@@ -1,10 +1,12 @@
 import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import React from 'react';
+import Header from '../components/Header';
 
 // This will be the screen for the selected pet and the user will have 3 things to do here, 
 export default function PetHome({ navigation }) {
     return (
         <View style={styles.container}>
+            <Header title={"PetHome"} onBack={() => navigation.navigate("PetList")} />
             <Text style={styles.title}>This is 'Your Pet's Room</Text>
             <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('PetFeed')}>
                 <Text style={styles.btext}>FEED ME</Text>
