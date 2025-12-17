@@ -19,6 +19,7 @@ export default function App() {
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="PetList" component={PetListScreen} />
           <Stack.Screen name="PetHome" component={PetHome} />
+
           <Stack.Screen name="PetFeed" component={PetFeed} />
           <Stack.Screen name="PetLove" component={PetLove} />
           <Stack.Screen name="PetHeal" component={PetHeal} />
