@@ -108,8 +108,14 @@ const Controls = (entities, { touches }) => {
 
     if (entities.ballCount.count <= 0) return entities; // can't shoot
 
-    const topCircleY = 30 + 50 / 2;
-    const topCenter = { x: width / 2, y: topCircleY };
+    const topBarHeight = 100;
+    const topBarTop = 30;
+    const ballRadius = 18; // your ball radius
+
+    const topCenter = {
+        x: width / 2,
+        y: topBarTop + topBarHeight - ballRadius, // bottom of topBar minus half the ball height
+    };
 
     touches.forEach(touch => {
         if (touch.type === 'start') {
