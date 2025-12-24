@@ -1,153 +1,261 @@
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
-import { GameEngine } from "react-native-game-engine";
-import Matter from "matter-js";
+import React, { useState } from 'react';
+import { View, Dimensions, StyleSheet, Text } from 'react-native';
+import { GameEngine } from 'react-native-game-engine';
+import Matter from 'matter-js';
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get('window');
 
-/* ---------------- PHYSICS SYSTEM ---------------- */
+const Ball = ({ body }) => {
+    const r = body.circleRadius;
+    return (
+        <View
+            style={{
+                position: 'absolute',
+                left: body.position.x - r,
+                top: body.position.y - r,
+                width: r * 2,
+                height: r * 2,
+                borderRadius: r,
+                backgroundColor: 'orange',
+            }}
+        />
+    );
+};
+
+const Box = ({ body, size, color = '#555' }) => (
+    <View
+        style={{
+            position: 'absolute',
+            left: body.position.x - size[0] / 2,
+            top: body.position.y - size[1] / 2,
+            width: size[0],
+            height: size[1],
+            backgroundColor: color,
+        }}
+    />
+);
+
+const TrajectoryPreview = ({ start, end, active, walls }) => {
+    if (!active || !start || !end) return null;
+
+    let dx = start.x - end.x;
+    let dy = start.y - end.y;
+    if (dy < 0) dy = 0;
+
+    const points = [];
+    let pos = { x: start.x, y: start.y };
+    let vel = { x: dx * 0.05, y: dy * 0.05 };
+    const gravity = 0.5;
+    const restitution = 1;
+
+    for (let i = 0; i < 300; i++) {
+        vel.y += gravity * 0.016;
+        pos.x += vel.x;
+        pos.y += vel.y;
+
+        walls.forEach(w => {
+            if (w.isVertical && pos.x <= w.x + w.width / 2 && pos.x >= w.x - w.width / 2) {
+                vel.x = -vel.x * restitution;
+            }
+            if (
+                w.isPlatform &&
+                pos.y >= w.y - w.height / 2 &&
+                pos.y <= w.y + w.height / 2 &&
+                pos.x >= w.x - w.width / 2 &&
+                pos.x <= w.x + w.width / 2
+            ) {
+                vel.y = -vel.y * restitution;
+            }
+        });
+
+        if (pos.y >= height - 30) break;
+        points.push({ x: pos.x, y: pos.y });
+    }
+
+    return (
+        <>
+            {points.map((p, i) => (
+                <View
+                    key={i}
+                    style={{
+                        position: 'absolute',
+                        width: 4,
+                        height: 4,
+                        borderRadius: 2,
+                        backgroundColor: 'rgba(255,255,255,0.7)',
+                        left: p.x - 2,
+                        top: p.y - 2,
+                    }}
+                />
+            ))}
+        </>
+    );
+};
+
 const Physics = (entities, { time }) => {
-    if (!entities.physics) return entities;
+    Matter.Engine.update(entities.physics.engine, time.delta);
+    return entities;
+};
 
-    // Clamp delta to avoid warnings
-    const delta = Math.min(time.delta, 16.667);
-    Matter.Engine.update(entities.physics.engine, delta);
+let ballId = 0;
+
+const Controls = (entities, { touches }) => {
+    const world = entities.physics.world;
+
+    if (!entities.aim) {
+        entities.aim = { active: false, start: null, end: null, renderer: TrajectoryPreview };
+    }
+
+    if (entities.ballCount.count <= 0) return entities; // can't shoot
+
+    const topCircleY = 30 + 50 / 2;
+    const topCenter = { x: width / 2, y: topCircleY };
+
+    touches.forEach(touch => {
+        if (touch.type === 'start') {
+            entities.aim.active = true;
+            entities.aim.start = topCenter;
+            entities.aim.end = { x: touch.event.pageX, y: touch.event.pageY };
+        }
+
+        if (touch.type === 'move' && entities.aim.start) {
+            entities.aim.end = { x: touch.event.pageX, y: touch.event.pageY };
+        }
+
+        if (touch.type === 'end' && entities.aim.start) {
+            let dx = entities.aim.start.x - touch.event.pageX;
+            let dy = entities.aim.start.y - touch.event.pageY;
+            if (dy < 0) dy = 0;
+
+            const forceScale = 0.0005;
+            const ball = Matter.Bodies.circle(entities.aim.start.x, entities.aim.start.y, 18, {
+                restitution: 1,
+                friction: 0,
+                frictionAir: 0,
+                label: 'ball',
+            });
+
+            Matter.Body.applyForce(ball, ball.position, { x: dx * forceScale, y: dy * forceScale });
+            Matter.World.add(world, ball);
+
+            const ballKey = `ball_${ballId++}`;
+            entities[ballKey] = { body: ball, renderer: Ball };
+
+            if (!entities.ballsInPlay) entities.ballsInPlay = [];
+            entities.ballsInPlay.push(ballKey);
+
+            entities.ballCount.count = Math.max(entities.ballCount.count - 1, 0);
+
+            entities.aim.active = false;
+            entities.aim.start = null;
+            entities.aim.end = null;
+        }
+    });
 
     return entities;
 };
 
-/* ---------------- BALL SHOOTER GAME ---------------- */
-export default function BallShooterGame() {
-    const [entities, setEntities] = useState(null);
+export default function BouncyShooter() {
+    const totalBalls = 10;
+    const [ballCount, setBallCount] = useState(totalBalls);
 
-    useEffect(() => {
-        console.log("🚀 Initializing Matter engine");
+    const engine = Matter.Engine.create({ enableSleeping: false });
+    const world = engine.world;
+    engine.gravity.y = 1;
 
-        const engine = Matter.Engine.create();
-        const world = engine.world;
-        world.gravity.y = 1;
+    const floor = Matter.Bodies.rectangle(width / 2, height - 30, width, 20, {
+        isStatic: true,
+        isSensor: true,
+        label: 'killFloor',
+    });
+    const leftWall = Matter.Bodies.rectangle(-10, height / 2, 20, height, { isStatic: true, restitution: 1 });
+    const rightWall = Matter.Bodies.rectangle(width + 10, height / 2, 20, height, { isStatic: true, restitution: 1 });
+    const platform1 = Matter.Bodies.rectangle(width / 2, height - 180, 160, 15, { isStatic: true, restitution: 1 });
 
-        // Ground
-        const ground = Matter.Bodies.rectangle(width / 2, height - 20, width, 40, {
-            isStatic: true,
-        });
-        Matter.World.add(world, ground);
+    Matter.World.add(world, [floor, leftWall, rightWall, platform1]);
 
-        setEntities({
-            physics: { engine, world },
-            ground: {
-                body: ground,
-                size: [width, 40],
-                color: "green",
-                renderer: Ground,
-            },
-        });
+    const walls = [
+        { x: 0, y: 0, width: 20, height, isVertical: true },
+        { x: width, y: 0, width: 20, height, isVertical: true },
+        { x: platform1.position.x, y: platform1.position.y, width: 160, height: 15, isPlatform: true },
+    ];
 
-        console.log("✅ Entities initialized with ground");
-    }, []);
+    const BallCleanupSystem = (entities) => {
+        const engine = entities.physics.engine;
+        const world = entities.physics.world;
+        if (!entities.ballsInPlay) entities.ballsInPlay = [];
 
-    const shootBalls = (x, y) => {
-        console.log("👆 Screen touched at:", x, y);
+        // Go through each ball and remove if touching kill floor
+        entities.ballsInPlay.forEach((ballKey) => {
+            const ballEntity = entities[ballKey];
+            if (!ballEntity) return;
 
-        setEntities((prev) => {
-            if (!prev) return prev;
+            const ballBody = ballEntity.body;
 
-            const { world } = prev.physics;
-            const startX = width / 2;
-            const startY = height - 60;
-            const angle = Math.atan2(y - startY, x - startX);
-            const speed = 15;
-            const vx = speed * Math.cos(angle);
-            const vy = speed * Math.sin(angle);
-
-            const newBalls = {};
-
-            for (let i = 0; i < 10; i++) {
-                const ball = Matter.Bodies.circle(startX, startY, 8, { restitution: 0.9 });
-                Matter.Body.setVelocity(ball, { x: vx, y: vy });
-                Matter.World.add(world, ball);
-
-                newBalls[`ball_${ball.id}`] = {
-                    body: ball,
-                    size: [16, 16],
-                    color: "black",
-                    renderer: Ball,
-                };
-
-                console.log(`⚫ Ball ${i + 1} created, id: ${ball.id}`);
+            if (ballBody.position.y >= height - 40) { // floor threshold
+                Matter.World.remove(world, ballBody);
+                delete entities[ballKey];
             }
-
-            // Return a new object reference so GameEngine re-renders
-            return {
-                ...prev,
-                ...newBalls,
-                physics: { ...prev.physics },
-            };
         });
+
+        // Update ballsInPlay list
+        entities.ballsInPlay = entities.ballsInPlay.filter(key => entities[key]);
+
+        // Reload balls if all gone
+        if (entities.ballsInPlay.length === 0 && entities.ballCount.count === 0) {
+            entities.ballCount.count = totalBalls;
+        }
+
+        setBallCount(entities.ballCount.count);
+        return entities;
     };
 
-    if (!entities) return null;
-
     return (
-        <View
-            style={styles.container}
-            onStartShouldSetResponder={() => true}
-            onResponderRelease={(e) => {
-                const { pageX, pageY } = e.nativeEvent;
-                shootBalls(pageX, pageY);
-            }}
-        >
-            <GameEngine style={styles.container} systems={[Physics]} entities={entities} />
+        <View style={styles.container}>
+            <View style={styles.topBar}>
+                <View style={styles.ballCircle}>
+                    <Text style={styles.ballCount}>{ballCount}</Text>
+                </View>
+            </View>
+
+            <GameEngine
+                style={styles.gameContainer}
+                systems={[Physics, Controls, BallCleanupSystem]}
+                entities={{
+                    physics: { engine, world },
+                    ballCount: { count: totalBalls },
+                    ballsInPlay: [],
+                    aim: { active: false, start: null, end: null, renderer: (props) => <TrajectoryPreview {...props} walls={walls} /> },
+                    floor: { body: floor, size: [width, 20], renderer: Box },
+                    leftWall: { body: leftWall, size: [20, height], renderer: Box },
+                    rightWall: { body: rightWall, size: [20, height], renderer: Box },
+                    platform1: { body: platform1, size: [160, 15], renderer: Box },
+                }}
+            />
         </View>
     );
 }
 
-/* ---------------- RENDERERS ---------------- */
-const Ball = ({ body, size, color }) => {
-    const x = body.position.x - size[0] / 2;
-    const y = body.position.y - size[1] / 2;
-
-    return (
-        <View
-            style={[
-                styles.ball,
-                {
-                    width: size[0],
-                    height: size[1],
-                    backgroundColor: color,
-                    left: x,
-                    top: y,
-                },
-            ]}
-        />
-    );
-};
-
-const Ground = ({ body, size, color }) => {
-    const x = body.position.x - size[0] / 2;
-    const y = body.position.y - size[1] / 2;
-
-    return (
-        <View
-            style={{
-                position: "absolute",
-                width: size[0],
-                height: size[1],
-                backgroundColor: color,
-                left: x,
-                top: y,
-            }}
-        />
-    );
-};
-
-/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
+    container: { flex: 1, backgroundColor: '#111' },
+    topBar: {
+        position: 'absolute',
+        top: 30,
+        width,
+        height: 100,
+        backgroundColor: '#222',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
     },
-    ball: {
-        position: "absolute",
-        borderRadius: 8,
+    ballCircle: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: 'orange',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
+    ballCount: { color: '#111', fontWeight: 'bold', fontSize: 20 },
+    gameContainer: { flex: 1 },
 });
