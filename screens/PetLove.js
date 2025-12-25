@@ -38,17 +38,17 @@ const Box = ({ body, size, color = '#555' }) => (
 const TrajectoryPreview = ({ start, end, active, walls }) => {
     if (!active || !start || !end) return null;
 
-    let dx = start.x - end.x;
-    let dy = start.y - end.y;
-    if (dy < 0) dy = 0;
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
 
     const points = [];
     let pos = { x: start.x, y: start.y };
-    let vel = { x: dx * 0.05, y: dy * 0.05 };
-    const gravity = 0.5;
+    const forceScale = 0.05;
+    let vel = { x: dx * forceScale, y: dy * forceScale };
+    const gravity = 1;
     const restitution = 1;
 
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 50; i++) {
         vel.y += gravity * 0.016;
         pos.x += vel.x;
         pos.y += vel.y;
@@ -106,15 +106,15 @@ const Controls = (entities, { touches }) => {
         entities.aim = { active: false, start: null, end: null, renderer: TrajectoryPreview };
     }
 
-    if (entities.ballCount.count <= 0) return entities; // can't shoot
+    if (entities.ballCount.count <= 0) return entities;
 
     const topBarHeight = 100;
     const topBarTop = 30;
-    const ballRadius = 18; // your ball radius
+    const ballRadius = 18;
 
     const topCenter = {
         x: width / 2,
-        y: topBarTop + topBarHeight - ballRadius, // bottom of topBar minus half the ball height
+        y: topBarTop + topBarHeight - ballRadius,
     };
 
     touches.forEach(touch => {
@@ -129,19 +129,25 @@ const Controls = (entities, { touches }) => {
         }
 
         if (touch.type === 'end' && entities.aim.start) {
-            let dx = entities.aim.start.x - touch.event.pageX;
-            let dy = entities.aim.start.y - touch.event.pageY;
-            if (dy < 0) dy = 0;
+            let dx = touch.event.pageX - entities.aim.start.x;
+            let dy = touch.event.pageY - entities.aim.start.y;
 
-            const forceScale = 0.0005;
-            const ball = Matter.Bodies.circle(entities.aim.start.x, entities.aim.start.y, 18, {
+            const ball = Matter.Bodies.circle(entities.aim.start.x, entities.aim.start.y, ballRadius, {
                 restitution: 1,
                 friction: 0,
                 frictionAir: 0,
                 label: 'ball',
             });
 
-            Matter.Body.applyForce(ball, ball.position, { x: dx * forceScale, y: dy * forceScale });
+            // Optional: limit max force
+            const maxForce = 0.05;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            if (length > 0) {
+                dx = (dx / length) * maxForce;
+                dy = (dy / length) * maxForce;
+            }
+
+            Matter.Body.applyForce(ball, ball.position, { x: dx, y: dy });
             Matter.World.add(world, ball);
 
             const ballKey = `ball_${ballId++}`;
@@ -187,27 +193,23 @@ export default function BouncyShooter() {
     ];
 
     const BallCleanupSystem = (entities) => {
-        const engine = entities.physics.engine;
         const world = entities.physics.world;
         if (!entities.ballsInPlay) entities.ballsInPlay = [];
 
-        // Go through each ball and remove if touching kill floor
-        entities.ballsInPlay.forEach((ballKey) => {
+        entities.ballsInPlay.forEach(ballKey => {
             const ballEntity = entities[ballKey];
             if (!ballEntity) return;
 
             const ballBody = ballEntity.body;
 
-            if (ballBody.position.y >= height - 40) { // floor threshold
+            if (ballBody.position.y >= height - 40) {
                 Matter.World.remove(world, ballBody);
                 delete entities[ballKey];
             }
         });
 
-        // Update ballsInPlay list
         entities.ballsInPlay = entities.ballsInPlay.filter(key => entities[key]);
 
-        // Reload balls if all gone
         if (entities.ballsInPlay.length === 0 && entities.ballCount.count === 0) {
             entities.ballCount.count = totalBalls;
         }
