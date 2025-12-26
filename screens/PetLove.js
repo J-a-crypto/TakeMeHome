@@ -35,6 +35,82 @@ const Box = ({ body, size, color = '#555' }) => (
     />
 );
 
+// TARGET SPAWN ZONE
+const TARGET_ZONE = {
+    xMin: 50,
+    xMax: width - 50,
+    yMin: 300,
+    yMax: height - 100,
+};
+
+// MESSAGES
+const POSITIVE_MESSAGES = [
+    'Nice!',
+    'Great job!',
+    'Keep going!',
+    'You got this!',
+    'Well done!',
+];
+
+const NEGATIVE_MESSAGES = [
+    'Missed!',
+    'Try again',
+    'Oops',
+    'Not this one',
+    'Focus!',
+];
+
+
+const TargetCircle = ({ body, hitsLeft, radius, type }) => {
+    const color = type === 'positive' ? '#2ecc71' : '#e74c3c';
+
+    return (
+        <View
+            style={{
+                position: 'absolute',
+                left: body.position.x - radius,
+                top: body.position.y - radius,
+                width: radius * 2,
+                height: radius * 2,
+                borderRadius: radius,
+                backgroundColor: color,
+                justifyContent: 'center',
+                alignItems: 'center',
+            }}
+        >
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>
+                {hitsLeft}
+            </Text>
+        </View>
+    );
+};
+
+
+const FloatingMessage = ({ position, message, type }) => {
+    const color = type === 'positive' ? '#2ecc71' : '#e74c3c';
+
+    return (
+        <View
+            style={{
+                position: 'absolute',
+                left: position.x - 60,
+                top: position.y - 20,
+                width: 120,
+                padding: 6,
+                backgroundColor: color,
+                borderRadius: 8,
+                alignItems: 'center',
+            }}
+        >
+            <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>
+                {message}
+            </Text>
+        </View>
+    );
+};
+
+
+
 const TrajectoryPreview = ({ start, end, active, walls }) => {
     if (!active || !start || !end) return null;
 
@@ -45,8 +121,8 @@ const TrajectoryPreview = ({ start, end, active, walls }) => {
     let pos = { x: start.x, y: start.y };
     const forceScale = 0.05;
     let vel = { x: dx * forceScale, y: dy * forceScale };
-    const gravity = 1;
-    const restitution = 1;
+    const gravity = 0.98;
+    const restitution = 1.5;
 
     for (let i = 0; i < 50; i++) {
         vel.y += gravity * 0.016;
@@ -99,6 +175,105 @@ const Physics = (entities, { time }) => {
 
 let ballId = 0;
 
+const createSingleTarget = (world, index) => {
+    const radius = 25;
+    const hits = Math.floor(Math.random() * 15) + 5;
+
+    const isPositive = Math.random() < 0.5;
+
+    const message = isPositive
+        ? POSITIVE_MESSAGES[Math.floor(Math.random() * POSITIVE_MESSAGES.length)]
+        : NEGATIVE_MESSAGES[Math.floor(Math.random() * NEGATIVE_MESSAGES.length)];
+
+    const body = Matter.Bodies.circle(
+        Math.random() * (TARGET_ZONE.xMax - TARGET_ZONE.xMin) + TARGET_ZONE.xMin,
+        Math.random() * (TARGET_ZONE.yMax - TARGET_ZONE.yMin) + TARGET_ZONE.yMin,
+        radius + 1.5,
+        {
+            isStatic: true,
+            restitution: 1,
+            label: 'target',
+        }
+    );
+
+    Matter.World.add(world, body);
+
+    return {
+        [`target_${index}`]: {
+            body,
+            radius,
+            hitsLeft: hits,
+            message,
+            type: isPositive ? 'positive' : 'negative',
+            renderer: TargetCircle,
+        },
+    };
+};
+
+const createTargets = (world, count = 10) => {
+    let targets = {};
+    for (let i = 0; i < count; i++) {
+        targets = { ...targets, ...createSingleTarget(world, i) };
+    }
+    return targets;
+};
+
+
+const TargetHitSystem = (entities) => {
+    const engine = entities.physics.engine;
+    const world = entities.physics.world;
+
+    if (entities._collisionListenerAdded) return entities;
+    entities._collisionListenerAdded = true;
+
+    Matter.Events.on(engine, 'collisionStart', event => {
+        event.pairs.forEach(({ bodyA, bodyB }) => {
+            const ball = bodyA.label === 'ball' ? bodyA : bodyB.label === 'ball' ? bodyB : null;
+            const targetBody = bodyA.label === 'target' ? bodyA : bodyB.label === 'target' ? bodyB : null;
+
+            if (!ball || !targetBody) return;
+
+            const targetKey = Object.keys(entities).find(
+                key => entities[key]?.body === targetBody
+            );
+
+            if (!targetKey) return;
+
+            const target = entities[targetKey];
+            target.hitsLeft -= 1;
+
+            if (target.hitsLeft <= 0) {
+                const { x, y } = target.body.position;
+
+                // Remove target
+                Matter.World.remove(world, targetBody);
+                delete entities[targetKey];
+
+                // 🟢 Spawn floating message
+                const messageKey = `message_${Date.now()}`;
+                entities[messageKey] = {
+                    position: { x, y },
+                    message: target.message,
+                    type: target.type,
+                    life: 60, // frames
+                    renderer: FloatingMessage,
+                };
+
+                // 🔁 Respawn target
+                Object.assign(
+                    entities,
+                    createSingleTarget(world, Date.now())
+                );
+            }
+        });
+    });
+
+    return entities;
+};
+
+
+
+
 const Controls = (entities, { touches }) => {
     const world = entities.physics.world;
 
@@ -133,9 +308,9 @@ const Controls = (entities, { touches }) => {
             let dy = touch.event.pageY - entities.aim.start.y;
 
             const ball = Matter.Bodies.circle(entities.aim.start.x, entities.aim.start.y, ballRadius, {
-                restitution: 1,
+                restitution: 0.9,
                 friction: 0,
-                frictionAir: 0,
+                frictionAir: 0.005,
                 label: 'ball',
             });
 
@@ -168,13 +343,19 @@ const Controls = (entities, { touches }) => {
 };
 
 export default function BouncyShooter() {
+
     const totalBalls = 10;
     const [ballCount, setBallCount] = useState(totalBalls);
 
     const engine = Matter.Engine.create({ enableSleeping: false });
     const world = engine.world;
     engine.gravity.y = 1;
+    const targets = createTargets(world, 8);
 
+    const ceiling = Matter.Bodies.rectangle(width / 2, 80, width, 20, {
+        isStatic: true,
+        restitution: 1,
+    });
     const floor = Matter.Bodies.rectangle(width / 2, height - 30, width, 20, {
         isStatic: true,
         isSensor: true,
@@ -182,15 +363,29 @@ export default function BouncyShooter() {
     });
     const leftWall = Matter.Bodies.rectangle(-10, height / 2, 20, height, { isStatic: true, restitution: 1 });
     const rightWall = Matter.Bodies.rectangle(width + 10, height / 2, 20, height, { isStatic: true, restitution: 1 });
-    const platform1 = Matter.Bodies.rectangle(width / 2, height - 180, 160, 15, { isStatic: true, restitution: 1 });
 
-    Matter.World.add(world, [floor, leftWall, rightWall, platform1]);
+    Matter.World.add(world, [ceiling, floor, leftWall, rightWall,]);
 
     const walls = [
         { x: 0, y: 0, width: 20, height, isVertical: true },
         { x: width, y: 0, width: 20, height, isVertical: true },
-        { x: platform1.position.x, y: platform1.position.y, width: 160, height: 15, isPlatform: true },
+
     ];
+
+    const MessageCleanupSystem = (entities) => {
+        Object.keys(entities).forEach(key => {
+            const e = entities[key];
+            if (e?.life !== undefined) {
+                e.life -= 1;
+                e.position.y -= 0.3; // float upward
+
+                if (e.life <= 0) {
+                    delete entities[key];
+                }
+            }
+        });
+        return entities;
+    };
 
     const BallCleanupSystem = (entities) => {
         const world = entities.physics.world;
@@ -217,6 +412,27 @@ export default function BouncyShooter() {
         setBallCount(entities.ballCount.count);
         return entities;
     };
+    const StuckBallSystem = (entities) => {
+        if (!entities.ballsInPlay) return entities;
+
+        entities.ballsInPlay.forEach(key => {
+            const ball = entities[key]?.body;
+            if (!ball) return;
+
+            const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+
+            if (speed < 0.2) {
+                // Nudge the ball out
+                Matter.Body.applyForce(ball, ball.position, {
+                    x: (Math.random() - 0.5) * 0.002,
+                    y: -0.003,
+                });
+            }
+        });
+
+        return entities;
+    };
+
 
     return (
         <View style={styles.container}>
@@ -228,7 +444,7 @@ export default function BouncyShooter() {
 
             <GameEngine
                 style={styles.gameContainer}
-                systems={[Physics, Controls, BallCleanupSystem]}
+                systems={[Physics, StuckBallSystem, Controls, BallCleanupSystem, TargetHitSystem, MessageCleanupSystem]}
                 entities={{
                     physics: { engine, world },
                     ballCount: { count: totalBalls },
@@ -237,7 +453,9 @@ export default function BouncyShooter() {
                     floor: { body: floor, size: [width, 20], renderer: Box },
                     leftWall: { body: leftWall, size: [20, height], renderer: Box },
                     rightWall: { body: rightWall, size: [20, height], renderer: Box },
-                    platform1: { body: platform1, size: [160, 15], renderer: Box },
+                    ceiling: { body: ceiling, size: [width, 20], renderer: Box },
+
+                    ...targets,
                 }}
             />
         </View>
