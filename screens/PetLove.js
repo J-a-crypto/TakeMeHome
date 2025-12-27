@@ -3,7 +3,7 @@ import { View, Dimensions, StyleSheet, Text } from 'react-native';
 import { GameEngine } from 'react-native-game-engine';
 import Matter from 'matter-js';
 import { useContext, useEffect } from 'react';
-import { PetContext } from '../context/PetContext';
+import { PetsContext } from '../context/PetContext';
 
 
 const { width, height } = Dimensions.get('window');
@@ -360,32 +360,48 @@ export default function BouncyShooter({ navigation }) {
 
     const totalBalls = 10;
     const [ballCount, setBallCount] = useState(totalBalls);
-    const { state, dispatch } = useContext(PetContext);
-    console.log('[BouncyShooter] PetContext:', PetContext);
+    const { state, dispatch } = useContext(PetsContext);
+    console.log('[BouncyShooter] PetContext:', PetsContext);
 
-    if (!PetContext) {
+    if (!PetsContext) {
         console.log('[BouncyShooter] ❌ PetContext is undefined');
         return null;
     }
 
     useEffect(() => {
-        if (state.petHappiness >= 100) {
-            dispatch({
-                type: 'UPDATE_STATE',
-                payload: { petHappiness: 100 },
-            });
+        const activePet = state.pets.find(p => p.id === state.activePetId);
+        if (!activePet) return;
 
-            navigation.goBack(); // back to PetHome
+        console.log(`[BouncyShooter] 🎯 Active pet: ${activePet.name} the ${activePet.species}`);
+        if (activePet.happiness >= 100) {
+            dispatch({
+                type: 'CHANGE_PET_STAT',
+                payload: {
+                    id: activePet.id,
+                    stat: 'happiness',
+                    delta: 0,
+                },
+            });
+            navigation.goBack();
         }
-    }, [state.petHappiness]);
+    }, [state.pets, state.activePetId]);
 
 
     const handleHappinessChange = (delta) => {
-        console.log('[BouncyShooter] Happiness delta:', delta);
+        const activePetId = state.activePetId;
+        console.log(
+            `[BouncyShooter] 😊 Changing happiness of pet ID ${activePetId} by ${delta}`
+        )
+        if (!activePetId) return;
 
         dispatch({
-            type: 'CHANGE_HAPPINESS',
-            payload: delta,
+            type: 'CHANGE_PET_STAT',
+            payload: {
+                id: activePetId,
+                stat: 'happiness',
+                delta: delta,
+
+            }
         });
     };
 

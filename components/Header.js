@@ -16,7 +16,7 @@ export default function Header({ title, right, onBack }) {
 }
 const styles = StyleSheet.create({
     header: {
-        flex: 0.2,
+        flex: 0.25,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',

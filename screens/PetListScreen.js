@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, TextInput, Button } from 'react-native';
 import { PetsContext } from '../context/PetContext';
 import Header from '../components/Header';
+import { deleteGame } from '../utils/storage';
 
 export default function PetListScreen({ navigation }) {
     const { state, dispatch } = useContext(PetsContext);
@@ -35,6 +36,11 @@ export default function PetListScreen({ navigation }) {
 
 
 
+    const handleResetGame = async () => {
+        await deleteGame();           // remove saved data
+        dispatch({ type: 'CREATE_STARTER_PET' }); // reset context for starter pet
+        console.log('Game reset! Starter pet ready.');
+    };
 
     const handleAdopt = () => {
         if (!petName) return alert('Please enter a name!');
@@ -69,6 +75,8 @@ export default function PetListScreen({ navigation }) {
                     </TouchableOpacity>
                 ))
             )}
+            <Button title="Reset Game (Dev)" onPress={handleResetGame} />
+
 
             {/* Adoption Modal */}
             {state.pendingAdoption && showNamingModal && (

@@ -1,5 +1,5 @@
 //Through the use of AsyncStorage, I want to save and load game data
-//This is my storage system for my game data
+//This is my storage 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "petData_v1";
