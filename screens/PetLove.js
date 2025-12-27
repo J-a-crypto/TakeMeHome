@@ -2,8 +2,17 @@ import React, { useState } from 'react';
 import { View, Dimensions, StyleSheet, Text } from 'react-native';
 import { GameEngine } from 'react-native-game-engine';
 import Matter from 'matter-js';
+import { useContext, useEffect } from 'react';
+import { PetContext } from '../context/PetContext';
+
 
 const { width, height } = Dimensions.get('window');
+
+const HAPPINESS_VALUES = {
+    positive: 25,
+    negative: -3,
+};
+
 
 const Ball = ({ body }) => {
     const r = body.circleRadius;
@@ -177,7 +186,7 @@ let ballId = 0;
 
 const createSingleTarget = (world, index) => {
     const radius = 25;
-    const hits = Math.floor(Math.random() * 15) + 5;
+    const hits = Math.floor(Math.random() * 15,) + 10;
 
     const isPositive = Math.random() < 0.5;
 
@@ -219,7 +228,7 @@ const createTargets = (world, count = 10) => {
 };
 
 
-const TargetHitSystem = (entities) => {
+const TargetHitSystem = (entities, { onHappiness }) => {
     const engine = entities.physics.engine;
     const world = entities.physics.world;
 
@@ -244,6 +253,11 @@ const TargetHitSystem = (entities) => {
 
             if (target.hitsLeft <= 0) {
                 const { x, y } = target.body.position;
+                onHappiness(
+                    target.type === 'positive'
+                        ? HAPPINESS_VALUES.positive
+                        : HAPPINESS_VALUES.negative
+                );
 
                 // Remove target
                 Matter.World.remove(world, targetBody);
@@ -342,10 +356,39 @@ const Controls = (entities, { touches }) => {
     return entities;
 };
 
-export default function BouncyShooter() {
+export default function BouncyShooter({ navigation }) {
 
     const totalBalls = 10;
     const [ballCount, setBallCount] = useState(totalBalls);
+    const { state, dispatch } = useContext(PetContext);
+    console.log('[BouncyShooter] PetContext:', PetContext);
+
+    if (!PetContext) {
+        console.log('[BouncyShooter] ❌ PetContext is undefined');
+        return null;
+    }
+
+    useEffect(() => {
+        if (state.petHappiness >= 100) {
+            dispatch({
+                type: 'UPDATE_STATE',
+                payload: { petHappiness: 100 },
+            });
+
+            navigation.goBack(); // back to PetHome
+        }
+    }, [state.petHappiness]);
+
+
+    const handleHappinessChange = (delta) => {
+        console.log('[BouncyShooter] Happiness delta:', delta);
+
+        dispatch({
+            type: 'CHANGE_HAPPINESS',
+            payload: delta,
+        });
+    };
+
 
     const engine = Matter.Engine.create({ enableSleeping: false });
     const world = engine.world;
@@ -431,6 +474,8 @@ export default function BouncyShooter() {
         });
 
         return entities;
+
+
     };
 
 
@@ -444,7 +489,7 @@ export default function BouncyShooter() {
 
             <GameEngine
                 style={styles.gameContainer}
-                systems={[Physics, StuckBallSystem, Controls, BallCleanupSystem, TargetHitSystem, MessageCleanupSystem]}
+                systems={[Physics, StuckBallSystem, Controls, BallCleanupSystem, (e, a) => TargetHitSystem(e, { ...a, onHappiness: handleHappinessChange }), MessageCleanupSystem]}
                 entities={{
                     physics: { engine, world },
                     ballCount: { count: totalBalls },
