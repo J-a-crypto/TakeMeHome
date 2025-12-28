@@ -2,7 +2,6 @@ import { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, TextInput, Button } from 'react-native';
 import { PetsContext } from '../context/PetContext';
 import Header from '../components/Header';
-import { deleteGame } from '../utils/storage';
 
 export default function PetListScreen({ navigation }) {
     const { state, dispatch } = useContext(PetsContext);
@@ -12,35 +11,44 @@ export default function PetListScreen({ navigation }) {
 
     // Show starter pet modal immediately if pendingAdoption exists
     useEffect(() => {
-        if (state.pendingAdoption && state.pets.length === 0) {
-            console.log("Showing starter pet naming modal for:", state.pendingAdoption.species);
+        if (state.pendingAdoption) {
+            console.log(
+                '[UI] Pending adoption detected → opening modal for',
+                state.pendingAdoption.species
+            );
             setShowNamingModal(true);
         }
-    }, [state.pendingAdoption, state.pets]);
+    }, [state.pendingAdoption]);
+
+
 
     useEffect(() => {
-        if (!state.nextRandomPetSpawn || state.pets.length === 0) return;
+        console.log("Next random pet spawn time:", state.nextRandomPetSpawn, state.pendingAdoption);
+        if (!state.nextRandomPetSpawn) {
+            console.log("No next random pet spawn scheduled.");
+            setDaysLeft(null);
+            return;
+        }
 
-        const updateCountdown = () => {
-            const msLeft = state.nextRandomPetSpawn - Date.now();
-            const days = msLeft / (24 * 60 * 60 * 1000);
-            setDaysLeft(days > 0 ? days.toFixed(2) : 0);
+        const update = () => {
+
+            const msLeft = Math.max(
+                0,
+                state.nextRandomPetSpawn - Date.now()
+            );
+            setDaysLeft(
+                (msLeft / (24 * 60 * 60 * 1000)).toFixed(2)
+            );
+            console.log(`Time left for next random pet spawn: ${msLeft} ms (${(msLeft / (24 * 60 * 60 * 1000)).toFixed(2)} days)`);
         };
 
-        updateCountdown(); // set immediately
+        update();
+        console.log("Setting interval to update countdown.");
+        const i = setInterval(update, 1000);
+        console.log(i);
+        return () => clearInterval(i);
+    }, [state.nextRandomPetSpawn]);
 
-        // Optional: update every hour if you want live countdown
-        const interval = setInterval(updateCountdown, 60 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [state.nextRandomPetSpawn, state.pets]);
-
-
-
-    const handleResetGame = async () => {
-        await deleteGame();           // remove saved data
-        dispatch({ type: 'CREATE_STARTER_PET' }); // reset context for starter pet
-        console.log('Game reset! Starter pet ready.');
-    };
 
     const handleAdopt = () => {
         if (!petName) return alert('Please enter a name!');
@@ -75,7 +83,6 @@ export default function PetListScreen({ navigation }) {
                     </TouchableOpacity>
                 ))
             )}
-            <Button title="Reset Game (Dev)" onPress={handleResetGame} />
 
 
             {/* Adoption Modal */}

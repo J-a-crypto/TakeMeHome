@@ -1,9 +1,15 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Button } from 'react-native';
 import React from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { deleteGame } from '../utils/storage';
 
 
 export default function HomeScreen({ navigation }) {
+    const handleResetGame = async () => {
+        console.log('Resetting game...', deleteGame);
+        await deleteGame();
+    };
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Welcome To Your Daily Dose of Pet Cuteness</Text>
@@ -11,6 +17,7 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("PetList")}>
                 <Text style={styles.buttonText}>Get Started</Text>
             </TouchableOpacity>
+            <Button title="Reset Game (Dev)" onPress={handleResetGame} />
         </View>
     );
 }

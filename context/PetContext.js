@@ -48,12 +48,20 @@ const applyDecay = (pets, intervals = 1) => {
     });
 };
 
+const scheduleNextSpawn = () => {
+    const minMinutes = 1;
+    const maxMinutes = 2;
+    return (
+        Date.now() +
+        (Math.random() * (maxMinutes - minMinutes) + minMinutes) * 60 * 1000
+    );
+};
+
 const defaultState = {
     pets: [],
     activePetId: null,
     pendingAdoption: null,
     nextRandomPetSpawn: null,
-    nextRandomPetTemplate: null,
 
     lastDecay: Date.now(),
 };
@@ -92,27 +100,36 @@ function reducer(state, action) {
 
         // Random pet appears
         case 'SPAWN_RANDOM_PET': {
-            // Pick a random pet template
-            const template = PET_TEMPLATES[Math.floor(Math.random() * PET_TEMPLATES.length)];
+            console.log('[REDUCER] SPAWN_RANDOM_PET fired');
 
-            const TEST_MODE = true; // change to false for real-day spawns
-
-            let nextSpawnTime;
-            if (TEST_MODE) {
-                const minSeconds = 5;
-                const maxSeconds = 15;
-                nextSpawnTime = Date.now() + (Math.random() * (maxSeconds - minSeconds) + minSeconds) * 1000;
-            } else {
-                const minDays = 1;
-                const maxDays = 2;
-                nextSpawnTime = Date.now() + (Math.random() * (maxDays - minDays) + minDays) * 24 * 60 * 60 * 1000;
+            if (state.pendingAdoption) {
+                console.log('[REDUCER] Spawn blocked: pending adoption exists');
+                return state;
             }
+
+            const template =
+                PET_TEMPLATES[Math.floor(Math.random() * PET_TEMPLATES.length)];
+
+            console.log('[REDUCER] Spawned template:', template.species);
 
             return {
                 ...state,
                 pendingAdoption: template,
-                nextRandomPetSpawn: nextSpawnTime,
-                nextRandomPetTemplate: template,
+                nextRandomPetSpawn: null,
+            };
+        }
+
+
+        case 'SCHEDULE_NEXT_SPAWN': {
+            const next = scheduleNextSpawn();
+            console.log(
+                '[REDUCER] Scheduling next spawn at:',
+                new Date(next).toLocaleTimeString()
+            );
+
+            return {
+                ...state,
+                nextRandomPetSpawn: next,
             };
         }
 
@@ -172,22 +189,82 @@ export function PetsProvider({ children }) {
             if (saved) {
                 dispatch({ type: 'LOAD_GAME', payload: saved });
             } else {
-                console.log("No saved game found. Creating starter pet...");
-                dispatch({ type: 'CREATE_STARTER_PET' }); // 👈 starter pet appears
+                dispatch({ type: 'CREATE_STARTER_PET' });
             }
             setHydrated(true);
         })();
     }, []);
-
     useEffect(() => {
         if (!hydrated) {
-            console.log("Hydration not complete, skipping save.");
+            console.log('[SPAWN WATCHER] Not hydrated yet');
             return;
         }
-        const stateToSave = { ...state, lastDecay: state.lastDecay ?? Date.now() };
-        console.log('Saving game state:', stateToSave);
-        saveGame(stateToSave);
+
+        if (!state.nextRandomPetSpawn) {
+            console.log('[SPAWN WATCHER] No spawn scheduled');
+            return;
+        }
+
+        if (state.pendingAdoption) {
+            console.log('[SPAWN WATCHER] Pending adoption already exists');
+            return;
+        }
+
+        console.log(
+            '[SPAWN WATCHER] Watching spawn time:',
+            new Date(state.nextRandomPetSpawn).toLocaleTimeString()
+        );
+
+        const checkSpawn = () => {
+            const now = Date.now();
+            const diff = state.nextRandomPetSpawn - now;
+
+            console.log(
+                `[SPAWN WATCHER] Checking... now=${now}, spawnAt=${state.nextRandomPetSpawn}, diff=${diff}`
+            );
+
+            if (diff <= 0) {
+                console.log('[SPAWN WATCHER] ⏰ TIME REACHED → SPAWNING PET');
+                dispatch({ type: 'SPAWN_RANDOM_PET' });
+            }
+        };
+
+        checkSpawn(); // catch-up if app reopened
+
+        const interval = setInterval(checkSpawn, 1000);
+        return () => {
+            console.log('[SPAWN WATCHER] Clearing interval');
+            clearInterval(interval);
+        };
+    }, [
+        hydrated,
+        state.nextRandomPetSpawn,
+        state.pendingAdoption,
+    ]);
+
+    useEffect(() => {
+        if (!hydrated) return;
+        saveGame(state);
     }, [state, hydrated]);
+
+    useEffect(() => {
+        if (!hydrated) { console.log("Not hydrated yet"); return; }
+
+        if (
+            state.pets.length > 0 &&
+            !state.pendingAdoption &&
+            !state.nextRandomPetSpawn
+        ) {
+            dispatch({
+                type: 'SCHEDULE_NEXT_SPAWN',
+            });
+        } console.log(state.pendingAdoption, state.nextRandomPetSpawn);
+    }, [
+        hydrated,
+        state.pets.length,
+        state.pendingAdoption,
+        state.nextRandomPetSpawn,
+    ]);
 
     useEffect(() => {
         if (!hydrated) return;
@@ -198,8 +275,6 @@ export function PetsProvider({ children }) {
 
         return () => clearInterval(interval);
     }, [hydrated]);
-
-
 
     return (
         <PetsContext.Provider value={{ state, dispatch }}>
