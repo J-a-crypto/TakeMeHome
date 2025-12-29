@@ -1,135 +1,161 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Dimensions, Image } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withTiming,
-} from 'react-native-reanimated';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
-} from 'react-native-gesture-handler';
+    View,
+    StyleSheet,
+    Image,
+    Animated,
+    PanResponder,
+    Dimensions,
+    Text,
+} from 'react-native';
+import { PetsContext } from '../context/PetContext';
+import Header from '../components/Header';
 
 const { width, height } = Dimensions.get('window');
 
-const FRUIT_SIZE = 80;
-
-const FRUITS = [
-    {
-        id: 'apple',
-        image: require('../assets/apple.png'),
-        startX: -120,
-        startY: 0,
-    },
-    {
-        id: 'banana',
-        image: require('../assets/apple.png'),
-        startX: 0,
-        startY: 0,
-    },
-    {
-        id: 'grape',
-        image: require('../assets/apple.png'),
-        startX: 120,
-        startY: 0,
-    },
+const FOODS = [
+    { value: 10, image: require('../assets/apple.png') },
+    { value: 15, image: require('../assets/apple1.png') },
+    { value: 20, image: require('../assets/apple2.png') },
 ];
 
-function DraggableFruit({ fruit, creatureLayout }) {
-    const translateX = useSharedValue(fruit.startX);
-    const translateY = useSharedValue(fruit.startY);
-    const prevX = useSharedValue(fruit.startX);
-    const prevY = useSharedValue(fruit.startY);
-    const eaten = useSharedValue(false);
+export default function PetFeed({ route, navigation }) {
+    const { petId } = route.params;
+    const { state, dispatch } = useContext(PetsContext);
+    const pet = state.pets.find(p => p.id === petId);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [
-            { translateX: translateX.value },
-            { translateY: translateY.value },
-            { scale: eaten.value ? withTiming(0, { duration: 300 }) : 1 },
-        ],
-        opacity: eaten.value ? withTiming(0) : 1,
-    }));
+    const [foods, setFoods] = useState([]);
 
-    const pan = Gesture.Pan()
-        .onStart(() => {
-            prevX.value = translateX.value;
-            prevY.value = translateY.value;
-        })
-        .onUpdate((e) => {
-            translateX.value = prevX.value + e.translationX;
-            translateY.value = prevY.value + e.translationY;
-        })
-        .onEnd(() => {
-            if (!creatureLayout || eaten.value) return;
+    // Spawn food above
+    useEffect(() => {
+        const spawn = Array.from({ length: 5 }).map(() => {
+            const food = FOODS[Math.floor(Math.random() * FOODS.length)];
+            return {
+                id: Math.random().toString(),
+                value: food.value,
+                image: food.image,
+                x: Math.random() * (width - 80),
+                y: 80 + Math.random() * 200,
+            };
+        });
+        setFoods(spawn);
+    }, []);
 
-            // Convert local translate values to screen coordinates
-            const fruitX = width / 2 + translateX.value;
-            const fruitY = height / 2 + translateY.value;
-
-            const hit =
-                fruitX + FRUIT_SIZE / 2 > creatureLayout.x &&
-                fruitX - FRUIT_SIZE / 2 < creatureLayout.x + creatureLayout.width &&
-                fruitY + FRUIT_SIZE / 2 > creatureLayout.y &&
-                fruitY - FRUIT_SIZE / 2 < creatureLayout.y + creatureLayout.height;
-
-            if (hit) {
-                eaten.value = true;
-            }
+    const handleEat = food => {
+        dispatch({
+            type: 'CHANGE_PET_STAT',
+            payload: {
+                id: pet.id,
+                stat: 'hunger',
+                delta: food.value,
+            },
         });
 
+        setFoods(prev => prev.filter(f => f.id !== food.id));
+    };
+
     return (
-        <GestureDetector gesture={pan}>
-            <Animated.Image
-                source={fruit.image}
-                style={[styles.fruit, animatedStyle]}
-                resizeMode="contain"
-            />
-        </GestureDetector>
+        <View style={styles.container}>
+            <Header title="Feed Me!" onBack={() => navigation.goBack()} />
+
+            {/* FOOD */}
+            {foods.map(food => (
+                <DraggableFood
+                    key={food.id}
+                    food={food}
+                    onEat={handleEat}
+                />
+            ))}
+
+            {/* PET DROP ZONE */}
+            <View style={styles.petZone}>
+                <Image source={pet.image} style={styles.pet} />
+                <Text style={styles.dropText}>Drop food here</Text>
+            </View>
+
+            <Text style={styles.hunger}>
+                Hunger: {pet.hunger}/100
+            </Text>
+        </View>
     );
 }
 
-export default function App() {
-    const [creatureLayout, setCreatureLayout] = useState(null);
+function DraggableFood({ food, onEat }) {
+    const pan = useRef(new Animated.ValueXY({ x: food.x, y: food.y })).current;
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onPanResponderMove: Animated.event(
+                [null, { dx: pan.x, dy: pan.y }],
+                { useNativeDriver: false }
+            ),
+            onPanResponderRelease: (_, gesture) => {
+                // Pet zone is bottom 30% of screen
+                if (gesture.moveY > height * 0.7) {
+                    onEat(food);
+                } else {
+                    Animated.spring(pan, {
+                        toValue: { x: food.x, y: food.y },
+                        useNativeDriver: false,
+                    }).start();
+                }
+            },
+        })
+    ).current;
 
     return (
-        <GestureHandlerRootView style={styles.container}>
-            {/* Creature (Drop Zone) */}
-            <Image
-                source={require('../assets/capybara.png')}
-                style={styles.creature}
-                resizeMode="contain"
-                onLayout={(e) => setCreatureLayout(e.nativeEvent.layout)}
-            />
-
-            {/* Fruits */}
-            {FRUITS.map((fruit) => (
-                <DraggableFruit
-                    key={fruit.id}
-                    fruit={fruit}
-                    creatureLayout={creatureLayout}
-                />
-            ))}
-        </GestureHandlerRootView>
+        <Animated.View
+            {...panResponder.panHandlers}
+            style={[styles.food, pan.getLayout()]}
+        >
+            <Image source={food.image} style={styles.foodImage} />
+        </Animated.View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: '#fffaf0',
     },
-    fruit: {
-        position: 'absolute',
-        width: FRUIT_SIZE,
-        height: FRUIT_SIZE,
-    },
-    creature: {
+
+    petZone: {
         position: 'absolute',
         bottom: 80,
+        width: '100%',
+        alignItems: 'center',
+    },
+
+    pet: {
         width: 240,
         height: 240,
+        resizeMode: 'contain',
+    },
+
+    dropText: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#666',
+    },
+
+    food: {
+        position: 'absolute',
+        width: 70,
+        height: 70,
+    },
+
+    foodImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'contain',
+    },
+
+    hunger: {
+        position: 'absolute',
+        bottom: 20,
+        alignSelf: 'center',
+        fontSize: 18,
+        fontWeight: '600',
     },
 });

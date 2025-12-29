@@ -263,7 +263,7 @@ const TargetHitSystem = (entities, { onHappiness }) => {
                 Matter.World.remove(world, targetBody);
                 delete entities[targetKey];
 
-                // 🟢 Spawn floating message
+                //  Spawn floating message
                 const messageKey = `message_${Date.now()}`;
                 entities[messageKey] = {
                     position: { x, y },
@@ -364,7 +364,7 @@ export default function BouncyShooter({ navigation }) {
     console.log('[BouncyShooter] PetContext:', PetsContext);
 
     if (!PetsContext) {
-        console.log('[BouncyShooter] ❌ PetContext is undefined');
+        console.log('[BouncyShooter] X PetContext is undefined');
         return null;
     }
 
@@ -372,7 +372,7 @@ export default function BouncyShooter({ navigation }) {
         const activePet = state.pets.find(p => p.id === state.activePetId);
         if (!activePet) return;
 
-        console.log(`[BouncyShooter] 🎯 Active pet: ${activePet.name} the ${activePet.species}`);
+        console.log(`[BouncyShooter] Active pet: ${activePet.name} the ${activePet.species}`);
         if (activePet.happiness >= 100) {
             dispatch({
                 type: 'CHANGE_PET_STAT',
@@ -390,7 +390,7 @@ export default function BouncyShooter({ navigation }) {
     const handleHappinessChange = (delta) => {
         const activePetId = state.activePetId;
         console.log(
-            `[BouncyShooter] 😊 Changing happiness of pet ID ${activePetId} by ${delta}`
+            `[BouncyShooter] Changing happiness of pet ID ${activePetId} by ${delta}`
         )
         if (!activePetId) return;
 

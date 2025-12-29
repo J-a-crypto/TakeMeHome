@@ -6,7 +6,6 @@ import { deleteGame } from '../utils/storage';
 
 export default function HomeScreen({ navigation }) {
     const handleResetGame = async () => {
-        console.log('Resetting game...', deleteGame);
         await deleteGame();
     };
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { PetsProvider } from './context/PetContext';
+import { SoundProvider } from './context/SoundContext';
 import HomeScreen from './screens/HomeScreen';
 import PetListScreen from './screens/PetListScreen';
 import PetHome from './screens/PetHome';
@@ -15,19 +16,21 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <SafeAreaProvider>
-      <PetsProvider>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="PetList" component={PetListScreen} />
-            <Stack.Screen name="PetHome" component={PetHome} />
+      <SoundProvider>
+        <PetsProvider>
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="PetList" component={PetListScreen} />
+              <Stack.Screen name="PetHome" component={PetHome} />
 
-            <Stack.Screen name="PetFeed" component={PetFeed} />
-            <Stack.Screen name="PetLove" component={BouncyShooter} />
-            <Stack.Screen name="PetHeal" component={PetHeal} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </PetsProvider>
+              <Stack.Screen name="PetFeed" component={PetFeed} />
+              <Stack.Screen name="PetLove" component={BouncyShooter} />
+              <Stack.Screen name="PetHeal" component={PetHeal} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </PetsProvider>
+      </SoundProvider>
     </SafeAreaProvider>
   );
 }

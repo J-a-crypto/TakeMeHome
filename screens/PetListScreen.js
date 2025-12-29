@@ -12,10 +12,6 @@ export default function PetListScreen({ navigation }) {
     // Show starter pet modal immediately if pendingAdoption exists
     useEffect(() => {
         if (state.pendingAdoption) {
-            console.log(
-                '[UI] Pending adoption detected → opening modal for',
-                state.pendingAdoption.species
-            );
             setShowNamingModal(true);
         }
     }, [state.pendingAdoption]);
@@ -23,9 +19,7 @@ export default function PetListScreen({ navigation }) {
 
 
     useEffect(() => {
-        console.log("Next random pet spawn time:", state.nextRandomPetSpawn, state.pendingAdoption);
         if (!state.nextRandomPetSpawn) {
-            console.log("No next random pet spawn scheduled.");
             setDaysLeft(null);
             return;
         }
@@ -39,13 +33,10 @@ export default function PetListScreen({ navigation }) {
             setDaysLeft(
                 (msLeft / (24 * 60 * 60 * 1000)).toFixed(2)
             );
-            console.log(`Time left for next random pet spawn: ${msLeft} ms (${(msLeft / (24 * 60 * 60 * 1000)).toFixed(2)} days)`);
         };
 
         update();
-        console.log("Setting interval to update countdown.");
         const i = setInterval(update, 1000);
-        console.log(i);
         return () => clearInterval(i);
     }, [state.nextRandomPetSpawn]);
 
@@ -62,7 +53,7 @@ export default function PetListScreen({ navigation }) {
         <View style={styles.container}>
             <Header title="PetList" onBack={() => navigation.navigate("Home")} />
             <Text style={styles.title}>Your Pets</Text>
-            <Text style={styles.countdown}>
+            <Text style={styles.countdown}> Your CounDown:
                 {daysLeft !== null && daysLeft > 0
                     ? `Next random pet (${state.nextRandomPetTemplate?.species}) in ${daysLeft} days`
                     : ''}

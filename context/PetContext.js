@@ -22,6 +22,7 @@ const createPetFromTemplate = (template, name) => ({
     name,
     species: template.species,
     image: template.image,
+    backgrounds: template.backgrounds,
     age: 0,
     hunger: 50,
     happiness: 20,
@@ -49,8 +50,8 @@ const applyDecay = (pets, intervals = 1) => {
 };
 
 const scheduleNextSpawn = () => {
-    const minMinutes = 1;
-    const maxMinutes = 2;
+    const minMinutes = 50;
+    const maxMinutes = 60;
     return (
         Date.now() +
         (Math.random() * (maxMinutes - minMinutes) + minMinutes) * 60 * 1000
@@ -248,7 +249,7 @@ export function PetsProvider({ children }) {
     }, [state, hydrated]);
 
     useEffect(() => {
-        if (!hydrated) { console.log("Not hydrated yet"); return; }
+        if (!hydrated) return;
 
         if (
             state.pets.length > 0 &&
