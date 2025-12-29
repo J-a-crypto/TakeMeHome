@@ -12,9 +12,11 @@ import * as ImagePicker from 'expo-image-picker';
 import Header from '../components/Header';
 import { PetsContext } from '../context/PetContext';
 
-export default function PetHome({ navigation }) {
+export default function PetHome({ navigation, route }) {
     const { state } = useContext(PetsContext);
-    const pet = state.pets.find(p => p.id === state.activePetId);
+    const { petId } = route.params;
+    const pet = state.pets.find(p => p.id === petId);
+
 
     const translateY = useRef(new Animated.Value(0)).current;
     const scale = useRef(new Animated.Value(1)).current;

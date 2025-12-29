@@ -5,7 +5,7 @@ import {
     StyleSheet,
     TouchableOpacity,
     Animated,
-    Image,
+    ImageBackground,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import Header from '../components/Header';
@@ -31,17 +31,14 @@ export default function PetHeal({ route, navigation }) {
     const scale = useRef(new Animated.Value(1)).current;
     const sparkleOpacity = useRef(new Animated.Value(0)).current;
 
-    // Pet animation
     const petScale = useRef(new Animated.Value(1)).current;
     const petBounce = useRef(new Animated.Value(0)).current;
 
-    // Completion
     const completionOpacity = useRef(new Animated.Value(0)).current;
     const completionTranslate = useRef(new Animated.Value(30)).current;
     const autoReturnTimer = useRef(null);
     const hasNavigated = useRef(false);
 
-    // 🔊 Sounds
     const biteSound = useRef(null);
     const missSound = useRef(null);
     const completeSound = useRef(null);
@@ -49,14 +46,12 @@ export default function PetHeal({ route, navigation }) {
     useEffect(() => {
         startIndicator();
         loadSounds();
-
         return () => {
             unloadSounds();
             if (autoReturnTimer.current) clearTimeout(autoReturnTimer.current);
         };
     }, []);
 
-    /* 🔊 SOUND SETUP */
     const loadSounds = async () => {
         biteSound.current = new Audio.Sound();
         missSound.current = new Audio.Sound();
@@ -83,14 +78,12 @@ export default function PetHeal({ route, navigation }) {
         }
     };
 
-    /* NAVIGATION */
     const navigateHome = () => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;
         navigation.navigate('PetHome', { petId });
     };
 
-    /* GAME LOGIC */
     const startIndicator = () => {
         position.setValue(0);
         Animated.loop(
@@ -109,16 +102,6 @@ export default function PetHeal({ route, navigation }) {
         ).start();
     };
 
-    const getAppleImage = () => {
-        switch (bites) {
-            case 0: return require('../assets/apple0.png');
-            case 1: return require('../assets/apple1.png');
-            case 2: return require('../assets/apple2.png');
-            case 3: return require('../assets/apple3.png');
-            default: return require('../assets/apple4.png');
-        }
-    };
-
     const animateBite = () => {
         Animated.sequence([
             Animated.timing(scale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
@@ -131,7 +114,6 @@ export default function PetHeal({ route, navigation }) {
         ]).start();
     };
 
-    /* 🐶 PET REACTIONS */
     const petPerfect = () => {
         setSpeech('Yay! So tasty!');
         Animated.sequence([
@@ -151,12 +133,10 @@ export default function PetHeal({ route, navigation }) {
     const showCompletion = async () => {
         setSpeech('I feel much better!');
         await playSound(completeSound);
-
         Animated.parallel([
             Animated.timing(completionOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
             Animated.spring(completionTranslate, { toValue: 0, friction: 6, useNativeDriver: true }),
         ]).start();
-
         autoReturnTimer.current = setTimeout(navigateHome, AUTO_RETURN_DELAY);
     };
 
@@ -211,8 +191,18 @@ export default function PetHeal({ route, navigation }) {
         });
     };
 
+    // Use emotes based on healing progress
+    const getPetImage = () => {
+        if (!pet.emotes) return pet.image; // fallback
+        return bites >= TOTAL_BITES ? pet.emotes.healed : pet.emotes.healing;
+    };
+
     return (
-        <View style={styles.container}>
+        <ImageBackground
+            source={pet.backgrounds.heal}
+            style={styles.container}
+            resizeMode="cover"
+        >
             <Text style={styles.health}>❤️ Health: {pet.health}/100</Text>
 
             {bites < TOTAL_BITES && (
@@ -226,7 +216,7 @@ export default function PetHeal({ route, navigation }) {
 
                     <TouchableOpacity activeOpacity={0.9} onPress={handleBite}>
                         <Animated.Image
-                            source={getAppleImage()}
+                            source={require('../assets/apple0.png')}
                             style={[styles.apple, { transform: [{ scale }] }]}
                         />
                     </TouchableOpacity>
@@ -242,7 +232,7 @@ export default function PetHeal({ route, navigation }) {
                 </View>
 
                 <Animated.Image
-                    source={pet.image}
+                    source={getPetImage()}
                     style={[
                         styles.petImage,
                         { transform: [{ scale: petScale }, { translateY: petBounce }] },
@@ -250,12 +240,11 @@ export default function PetHeal({ route, navigation }) {
                 />
             </View>
 
-            {/* COMPLETION */}
             {bites >= TOTAL_BITES && (
                 <Animated.View style={[styles.completionOverlay, { opacity: completionOpacity }]}>
                     <Animated.View style={{ transform: [{ translateY: completionTranslate }], alignItems: 'center' }}>
-                        <Text style={styles.completionTitle}>🍎 An Apple a Day</Text>
-                        <Text style={styles.completionSubtitle}>Keeps the Doctor Away!</Text>
+                        <Text style={styles.completionTitle}>🍎 All Done!</Text>
+                        <Text style={styles.completionSubtitle}>I feel great!</Text>
                         <TouchableOpacity style={styles.backButton} onPress={navigateHome}>
                             <Text style={styles.backButtonText}>Back to Pet Home</Text>
                         </TouchableOpacity>
@@ -263,7 +252,7 @@ export default function PetHeal({ route, navigation }) {
                     </Animated.View>
                 </Animated.View>
             )}
-        </View>
+        </ImageBackground>
     );
 }
 

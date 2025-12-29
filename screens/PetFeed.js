@@ -7,6 +7,7 @@ import {
     PanResponder,
     Dimensions,
     Text,
+    ImageBackground
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { PetsContext } from '../context/PetContext';
@@ -15,11 +16,13 @@ import Header from '../components/Header';
 const { width, height } = Dimensions.get('window');
 
 const FOODS = [
-    { value: 10, image: require('../assets/apple.png'), draggable: true },
-    { value: 15, image: require('../assets/apple1.png'), draggable: true },
-    { value: 20, image: require('../assets/apple2.png'), draggable: true },
-    { value: 0, image: require('../assets/apple0.png'), draggable: false }, // decoy
-    { value: 0, image: require('../assets/apple3.png'), draggable: false }, // decoy
+    { value: 10, image: require('../assets/foods/burgers.png'), draggable: true },
+    { value: 15, image: require('../assets/foods/coffee.png'), draggable: true },
+    { value: 20, image: require('../assets/foods/meal1.png'), draggable: true },
+    { value: 20, image: require('../assets/foods/pho.png'), draggable: true },
+    { value: 20, image: require('../assets/foods/ramen.png'), draggable: true },
+    { value: 0, image: require('../assets/foods/coffee.png'), draggable: false }, // decoy
+    { value: 0, image: require('../assets/foods/bbqchx.png'), draggable: false }, // decoy
 ];
 
 export default function PetFeed({ route, navigation }) {
@@ -30,9 +33,9 @@ export default function PetFeed({ route, navigation }) {
     const [foods, setFoods] = useState([]);
     const [soundEat, setSoundEat] = useState();
     const [soundMiss, setSoundMiss] = useState();
-    const [fullMessage, setFullMessage] = useState(false);
     const [gameOver, setGameOver] = useState(false);
 
+    // Load sounds
     useEffect(() => {
         const loadSounds = async () => {
             const eat = new Audio.Sound();
@@ -51,7 +54,7 @@ export default function PetFeed({ route, navigation }) {
         };
     }, []);
 
-    // Spawn new food periodically
+    // Spawn food periodically
     useEffect(() => {
         if (gameOver) return;
         const interval = setInterval(() => {
@@ -72,21 +75,24 @@ export default function PetFeed({ route, navigation }) {
         return () => clearInterval(interval);
     }, [gameOver]);
 
+    // End feeding game
     const endGame = () => {
         setGameOver(true);
-        setFullMessage(true);
-        setTimeout(() => navigation.navigate('PetHome'), 2500);
+        setTimeout(() => navigation.navigate('PetHome', { petId: pet.id }), 2500);
     };
 
     const handleEat = async food => {
         if (gameOver) return;
+
         dispatch({
             type: 'CHANGE_PET_STAT',
             payload: { id: pet.id, stat: 'hunger', delta: food.value },
         });
+
         setFoods(prev => prev.filter(f => f.id !== food.id));
         soundEat && await soundEat.replayAsync();
 
+        // If hunger reaches 100, end game
         const updatedPet = state.pets.find(p => p.id === petId);
         if ((updatedPet?.hunger ?? 0) + food.value >= 100) {
             endGame();
@@ -99,8 +105,18 @@ export default function PetFeed({ route, navigation }) {
         if (food.draggable) soundMiss && await soundMiss.replayAsync();
     };
 
+    // Determine pet image based on hunger
+    const getPetImage = () => {
+        if (pet.hunger >= 98) return pet.emotes.full;
+        return pet.emotes.eating;
+    };
+
     return (
-        <View style={styles.container}>
+        <ImageBackground
+            source={pet.backgrounds.feed}
+            style={styles.container}
+            resizeMode="cover"
+        >
             <Header title="Feed Me!" onBack={() => navigation.goBack()} />
 
             {foods.map(food => (
@@ -113,22 +129,17 @@ export default function PetFeed({ route, navigation }) {
             ))}
 
             <View style={styles.petZone}>
-                <Image source={pet.image} style={styles.pet} />
+                <Image source={getPetImage()} style={styles.pet} />
 
-                {fullMessage && (
-                    <View style={styles.speechBubble}>
-                        <Text style={styles.speechText}>I'M SO FULL!</Text>
-                    </View>
-                )}
-
-                {!fullMessage && <Text style={styles.dropText}>Drop food here</Text>}
+                {!gameOver && <Text style={styles.dropText}>Drop food here</Text>}
             </View>
 
             <Text style={styles.hunger}>Hunger: {pet.hunger}/100</Text>
-        </View>
+        </ImageBackground>
     );
 }
 
+// Falling food component
 function FallingFood({ food, onEat, onMiss }) {
     const pan = useRef(new Animated.ValueXY({ x: food.x, y: food.y })).current;
     const animation = useRef(null);
@@ -191,56 +202,22 @@ function FallingFood({ food, onEat, onMiss }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fffaf0',
-    },
+    container: { flex: 1, backgroundColor: '#fffaf0' },
     petZone: {
         position: 'absolute',
         bottom: 80,
         width: '100%',
         alignItems: 'center',
     },
-    pet: {
-        width: 240,
-        height: 240,
-        resizeMode: 'contain',
-    },
+    pet: { width: 240, height: 240, resizeMode: 'contain' },
     dropText: {
         marginTop: 8,
         fontSize: 16,
         color: '#666',
         fontWeight: 'bold',
     },
-    speechBubble: {
-        position: 'absolute',
-        bottom: 260,
-        backgroundColor: 'white',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: '#ccc',
-        maxWidth: '70%',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    speechText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-        textAlign: 'center',
-    },
-    food: {
-        position: 'absolute',
-        width: 70,
-        height: 70,
-    },
-    foodImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'contain',
-    },
+    food: { position: 'absolute', width: 70, height: 70 },
+    foodImage: { width: '100%', height: '100%', resizeMode: 'contain' },
     hunger: {
         position: 'absolute',
         bottom: 20,

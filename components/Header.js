@@ -32,7 +32,7 @@ export default function Header({ title, onBack }) {
 
 const styles = StyleSheet.create({
     safe: {
-        backgroundColor: '#fffaf0', // same as your header/game background
+        backgroundColor: 'transparent', // same as your header/game background
     },
     container: {
         flexDirection: 'row',

@@ -5,7 +5,7 @@ import { PET_TEMPLATES } from '../components/PetTemplates';
 export const PetsContext = createContext();
 
 const STAT_DECAY_SETTINGS = {
-    intervalMs: 5000, //  1 hour -> 1000 * 60 * 60,
+    intervalMs: 1000 * 60 * 3, //  1 hour -> 1000 * 60 * 60,
     rates: {
         hunger: 2,
         happiness: 1,
@@ -23,6 +23,7 @@ const createPetFromTemplate = (template, name) => ({
     species: template.species,
     image: template.image,
     backgrounds: template.backgrounds,
+    emotes: template.emotes,
     age: 0,
     hunger: 50,
     happiness: 20,
@@ -50,8 +51,8 @@ const applyDecay = (pets, intervals = 1) => {
 };
 
 const scheduleNextSpawn = () => {
-    const minMinutes = 50;
-    const maxMinutes = 60;
+    const minMinutes = 10;
+    const maxMinutes = 80;
     return (
         Date.now() +
         (Math.random() * (maxMinutes - minMinutes) + minMinutes) * 60 * 1000
@@ -103,20 +104,40 @@ function reducer(state, action) {
         case 'SPAWN_RANDOM_PET': {
             console.log('[REDUCER] SPAWN_RANDOM_PET fired');
 
-            if (state.pendingAdoption) {
-                console.log('[REDUCER] Spawn blocked: pending adoption exists');
+            // Hard guards
+            if (state.pendingAdoption || !state.nextRandomPetSpawn) {
                 return state;
             }
 
-            const template =
-                PET_TEMPLATES[Math.floor(Math.random() * PET_TEMPLATES.length)];
+            // Get species the player already owns
+            const ownedSpecies = new Set(state.pets.map(p => p.species));
 
-            console.log('[REDUCER] Spawned template:', template.species);
+            // Filter templates to only NEW species
+            const availableTemplates = PET_TEMPLATES.filter(
+                t => !ownedSpecies.has(t.species)
+            );
+
+            // If no new species remain, stop spawning forever
+            if (availableTemplates.length === 0) {
+                console.log('[REDUCER] All species collected. No more spawns.');
+                return {
+                    ...state,
+                    nextRandomPetSpawn: null,
+                };
+            }
+
+            // Pick a random NEW species
+            const template =
+                availableTemplates[
+                Math.floor(Math.random() * availableTemplates.length)
+                ];
+
+            console.log('[REDUCER] Spawned NEW species:', template.species);
 
             return {
                 ...state,
                 pendingAdoption: template,
-                nextRandomPetSpawn: null,
+                nextRandomPetSpawn: null, // invalidate spawn
             };
         }
 
@@ -251,21 +272,26 @@ export function PetsProvider({ children }) {
     useEffect(() => {
         if (!hydrated) return;
 
+        const ownedSpecies = new Set(state.pets.map(p => p.species));
+        const hasRemainingSpecies = PET_TEMPLATES.some(
+            t => !ownedSpecies.has(t.species)
+        );
+
         if (
+            hasRemainingSpecies &&
             state.pets.length > 0 &&
             !state.pendingAdoption &&
             !state.nextRandomPetSpawn
         ) {
-            dispatch({
-                type: 'SCHEDULE_NEXT_SPAWN',
-            });
-        } console.log(state.pendingAdoption, state.nextRandomPetSpawn);
+            dispatch({ type: 'SCHEDULE_NEXT_SPAWN' });
+        }
     }, [
         hydrated,
-        state.pets.length,
+        state.pets,
         state.pendingAdoption,
         state.nextRandomPetSpawn,
     ]);
+
 
     useEffect(() => {
         if (!hydrated) return;

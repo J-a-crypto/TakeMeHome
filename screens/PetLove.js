@@ -426,7 +426,7 @@ export default function BouncyShooter({ navigation }) {
 
     return (
         <ImageBackground
-            source={pet.backgrounds.home}
+            source={pet.backgrounds.love}
             style={styles.container}
             resizeMode="cover"
         >
