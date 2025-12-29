@@ -1,5 +1,21 @@
 export const PET_TEMPLATES = [
     {
+        species: 'Dog', image: require('../assets/dog.png'),
+        backgrounds: {
+            home: require('../assets/capybara_home.jpg'),
+            feed: require('../assets/capybara_home.jpg'),
+            love: require('../assets/dog_background_love.png'),
+            heal: require('../assets/capybara_home.jpg'),
+        },
+        emotes: {
+            healing: require('../assets/dog_heal.png'),
+            healed: require('../assets/dog_healed.png'),
+            eating: require('../assets/dog_eat.png'),
+            full: require('../assets/dog_full.png'),
+
+        }
+    },
+    {
         species: 'Capybara', image: require('../assets/capybara.png'),
         backgrounds: {
             home: require('../assets/capybara_home.jpg'),
@@ -28,22 +44,6 @@ export const PET_TEMPLATES = [
             healed: require('../assets/cat_healed.png'),
             eating: require('../assets/cat_eat.png'),
             full: require('../assets/cat_full.png'),
-
-        }
-    },
-    {
-        species: 'Dog', image: require('../assets/dog.png'),
-        backgrounds: {
-            home: require('../assets/capybara_home.jpg'),
-            feed: require('../assets/capybara_home.jpg'),
-            love: require('../assets/dog_background_love.png'),
-            heal: require('../assets/capybara_home.jpg'),
-        },
-        emotes: {
-            healing: require('../assets/dog_heal.png'),
-            healed: require('../assets/dog_healed.png'),
-            eating: require('../assets/dog_eat.png'),
-            full: require('../assets/dog_full.png'),
 
         }
     },

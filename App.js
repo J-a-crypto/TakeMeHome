@@ -25,9 +25,21 @@ export default function App() {
               <Stack.Screen name="PetList" component={PetListScreen} />
               <Stack.Screen name="PetHome" component={PetHome} />
 
-              <Stack.Screen name="PetFeed" component={PetFeed} />
-              <Stack.Screen name="PetLove" component={BouncyShooter} />
-              <Stack.Screen name="PetHeal" component={PetHeal} />
+              <Stack.Screen
+                name="PetFeed"
+                component={PetFeed}
+                options={{ gestureEnabled: false }} // <-- disables swipe back
+              />
+              <Stack.Screen
+                name="PetLove"
+                component={BouncyShooter}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="PetHeal"
+                component={PetHeal}
+                options={{ gestureEnabled: false }}
+              />
             </Stack.Navigator>
           </NavigationContainer>
           <SettingsModal />
