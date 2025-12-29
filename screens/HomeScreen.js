@@ -1,10 +1,16 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Button } from 'react-native';
-import React from 'react';
-import { useNavigation } from '@react-navigation/native';
+import React, { useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Button } from 'react-native';
+import { SoundContext } from '../context/SoundContext';
 import { deleteGame } from '../utils/storage';
 
-
 export default function HomeScreen({ navigation }) {
+    const { playRandomMusic } = useContext(SoundContext);
+
+    const handleStartGame = async () => {
+        await playRandomMusic();
+        navigation.navigate("PetList");
+    };
+
     const handleResetGame = async () => {
         await deleteGame();
     };
@@ -13,7 +19,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.container}>
             <Text style={styles.title}>Welcome To Your Daily Dose of Pet Cuteness</Text>
 
-            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("PetList")}>
+            <TouchableOpacity style={styles.button} onPress={handleStartGame}>
                 <Text style={styles.buttonText}>Get Started</Text>
             </TouchableOpacity>
             <Button title="Reset Game (Dev)" onPress={handleResetGame} />

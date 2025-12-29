@@ -17,11 +17,10 @@ const BAR_WIDTH = 260;
 const INDICATOR_WIDTH = 20;
 const AUTO_RETURN_DELAY = 2500;
 
-
-
 export default function PetHeal({ route, navigation }) {
     const { petId } = route.params;
     const { state, dispatch } = useContext(PetsContext);
+    const { sfxVolume } = useContext(SoundContext);
     const pet = state.pets.find(p => p.id === petId);
 
     const [bites, setBites] = useState(0);
@@ -58,21 +57,14 @@ export default function PetHeal({ route, navigation }) {
     }, []);
 
     /* 🔊 SOUND SETUP */
-
     const loadSounds = async () => {
         biteSound.current = new Audio.Sound();
         missSound.current = new Audio.Sound();
         completeSound.current = new Audio.Sound();
 
-        await biteSound.current.loadAsync(
-            require('../assets/sounds/bite.wav')
-        );
-        await missSound.current.loadAsync(
-            require('../assets/sounds/miss.wav')
-        );
-        await completeSound.current.loadAsync(
-            require('../assets/sounds/complete.wav')
-        );
+        await biteSound.current.loadAsync(require('../assets/sounds/bite.wav'));
+        await missSound.current.loadAsync(require('../assets/sounds/miss.wav'));
+        await completeSound.current.loadAsync(require('../assets/sounds/complete.wav'));
     };
 
     const unloadSounds = async () => {
@@ -81,15 +73,17 @@ export default function PetHeal({ route, navigation }) {
         await completeSound.current?.unloadAsync();
     };
 
-    const playSound = async soundRef => {
+    const playSound = async (soundRef) => {
         if (!soundRef?.current) return;
         try {
+            await soundRef.current.setVolumeAsync(sfxVolume);
             await soundRef.current.replayAsync();
-        } catch { }
+        } catch (e) {
+            console.log('Error playing sound', e);
+        }
     };
 
     /* NAVIGATION */
-
     const navigateHome = () => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;
@@ -97,7 +91,6 @@ export default function PetHeal({ route, navigation }) {
     };
 
     /* GAME LOGIC */
-
     const startIndicator = () => {
         position.setValue(0);
         Animated.loop(
@@ -128,34 +121,17 @@ export default function PetHeal({ route, navigation }) {
 
     const animateBite = () => {
         Animated.sequence([
-            Animated.timing(scale, {
-                toValue: 0.9,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scale, {
-                toValue: 1,
-                friction: 4,
-                useNativeDriver: true,
-            }),
+            Animated.timing(scale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+            Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }),
         ]).start();
 
         Animated.sequence([
-            Animated.timing(sparkleOpacity, {
-                toValue: 1,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-            Animated.timing(sparkleOpacity, {
-                toValue: 0,
-                duration: 600,
-                useNativeDriver: true,
-            }),
+            Animated.timing(sparkleOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+            Animated.timing(sparkleOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
         ]).start();
     };
 
     /* 🐶 PET REACTIONS */
-
     const petPerfect = () => {
         setSpeech('Yay! So tasty!');
         Animated.sequence([
@@ -177,16 +153,8 @@ export default function PetHeal({ route, navigation }) {
         await playSound(completeSound);
 
         Animated.parallel([
-            Animated.timing(completionOpacity, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }),
-            Animated.spring(completionTranslate, {
-                toValue: 0,
-                friction: 6,
-                useNativeDriver: true,
-            }),
+            Animated.timing(completionOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+            Animated.spring(completionTranslate, { toValue: 0, friction: 6, useNativeDriver: true }),
         ]).start();
 
         autoReturnTimer.current = setTimeout(navigateHome, AUTO_RETURN_DELAY);
@@ -221,11 +189,7 @@ export default function PetHeal({ route, navigation }) {
             if (heal > 0) {
                 dispatch({
                     type: 'CHANGE_PET_STAT',
-                    payload: {
-                        id: pet.id,
-                        stat: 'health',
-                        delta: heal,
-                    },
+                    payload: { id: pet.id, stat: 'health', delta: heal },
                 });
 
                 setBites(prev => {
@@ -249,7 +213,6 @@ export default function PetHeal({ route, navigation }) {
 
     return (
         <View style={styles.container}>
-            <Header title="Healing Time" onBack={() => navigation.goBack()} />
             <Text style={styles.health}>❤️ Health: {pet.health}/100</Text>
 
             {bites < TOTAL_BITES && (
@@ -282,12 +245,7 @@ export default function PetHeal({ route, navigation }) {
                     source={pet.image}
                     style={[
                         styles.petImage,
-                        {
-                            transform: [
-                                { scale: petScale },
-                                { translateY: petBounce },
-                            ],
-                        },
+                        { transform: [{ scale: petScale }, { translateY: petBounce }] },
                     ]}
                 />
             </View>

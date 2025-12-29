@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { PetsProvider } from './context/PetContext';
 import { SoundProvider } from './context/SoundContext';
+import SettingsModal from './components/SettingsModal';
 import HomeScreen from './screens/HomeScreen';
 import PetListScreen from './screens/PetListScreen';
 import PetHome from './screens/PetHome';
@@ -29,6 +30,7 @@ export default function App() {
               <Stack.Screen name="PetHeal" component={PetHeal} />
             </Stack.Navigator>
           </NavigationContainer>
+          <SettingsModal />
         </PetsProvider>
       </SoundProvider>
     </SafeAreaProvider>

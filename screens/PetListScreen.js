@@ -106,7 +106,7 @@ export default function PetListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, alignItems: 'center', backgroundColor: '#ffaf0' },
+    container: { flex: 1, padding: 10, alignItems: 'center', backgroundColor: '#ffaf0' },
     title: { fontSize: 22, marginTop: 12, fontWeight: '700' },
     petShow: {
         marginVertical: 10,
