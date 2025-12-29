@@ -6,7 +6,9 @@ import {
     TouchableOpacity,
     ImageBackground,
     Animated,
+    Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import Header from '../components/Header';
 import { PetsContext } from '../context/PetContext';
 
@@ -18,20 +20,15 @@ export default function PetHome({ navigation }) {
     const scale = useRef(new Animated.Value(1)).current;
     const [hearts, setHearts] = useState([]);
 
+    // New state for user photo
+    const [userPhoto, setUserPhoto] = useState(null);
+
     // Idle animation
     useEffect(() => {
         const idle = Animated.loop(
             Animated.sequence([
-                Animated.timing(translateY, {
-                    toValue: -8,
-                    duration: 1500,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(translateY, {
-                    toValue: 0,
-                    duration: 1500,
-                    useNativeDriver: true,
-                }),
+                Animated.timing(translateY, { toValue: -8, duration: 1500, useNativeDriver: true }),
+                Animated.timing(translateY, { toValue: 0, duration: 1500, useNativeDriver: true }),
             ])
         );
         idle.start();
@@ -51,16 +48,8 @@ export default function PetHome({ navigation }) {
 
         newHearts.forEach(h => {
             Animated.parallel([
-                Animated.timing(h.translateY, {
-                    toValue: -120,
-                    duration: 1200,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(h.opacity, {
-                    toValue: 0,
-                    duration: 1200,
-                    useNativeDriver: true,
-                }),
+                Animated.timing(h.translateY, { toValue: -120, duration: 1200, useNativeDriver: true }),
+                Animated.timing(h.opacity, { toValue: 0, duration: 1200, useNativeDriver: true }),
             ]).start(() => {
                 setHearts(prev => prev.filter(x => x.id !== h.id));
             });
@@ -71,19 +60,31 @@ export default function PetHome({ navigation }) {
         const { locationX, locationY } = e.nativeEvent;
 
         Animated.sequence([
-            Animated.timing(scale, {
-                toValue: 0.92,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scale, {
-                toValue: 1,
-                friction: 4,
-                useNativeDriver: true,
-            }),
+            Animated.timing(scale, { toValue: 0.92, duration: 100, useNativeDriver: true }),
+            Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }),
         ]).start();
 
         spawnHearts(locationX, locationY);
+    };
+
+    // Pick image
+    const pickImage = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+            alert('Permission to access gallery is required!');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setUserPhoto(result.assets[0].uri);
+        }
     };
 
     if (!pet) return null;
@@ -97,7 +98,7 @@ export default function PetHome({ navigation }) {
             <Header title={pet.name} onBack={() => navigation.navigate('PetList')} />
 
             {/* STATS */}
-            <View style={styles.statsPanel}>
+            <View style={styles.verticalStats}>
                 <Stat label="🍗 Hunger" value={pet.hunger} color="#ff9800" />
                 <Stat label="😊 Happiness" value={pet.happiness} color="#e91e63" />
                 <Stat label="❤️ Health" value={pet.health} color="#4caf50" />
@@ -110,12 +111,7 @@ export default function PetHome({ navigation }) {
                         key={h.id}
                         style={[
                             styles.heart,
-                            {
-                                left: h.x,
-                                top: h.y,
-                                opacity: h.opacity,
-                                transform: [{ translateY: h.translateY }],
-                            },
+                            { left: h.x, top: h.y, opacity: h.opacity, transform: [{ translateY: h.translateY }] },
                         ]}
                     >
                         ❤️
@@ -125,13 +121,17 @@ export default function PetHome({ navigation }) {
                 <TouchableOpacity activeOpacity={1} onPressIn={handlePetTap}>
                     <Animated.Image
                         source={pet.image}
-                        style={[
-                            styles.pet,
-                            {
-                                transform: [{ translateY }, { scale }],
-                            },
-                        ]}
+                        style={[styles.pet, { transform: [{ translateY }, { scale }] }]}
                     />
+                </TouchableOpacity>
+
+                {/* Picture Frame */}
+                <TouchableOpacity style={styles.frame} onPress={pickImage}>
+                    {userPhoto ? (
+                        <Image source={{ uri: userPhoto }} style={styles.frameImage} />
+                    ) : (
+                        <Text style={styles.frameText}>Tap to add photo</Text>
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -150,12 +150,7 @@ function Stat({ label, value, color }) {
         <View style={styles.stat}>
             <Text style={styles.statLabel}>{label}</Text>
             <View style={styles.bar}>
-                <View
-                    style={[
-                        styles.fill,
-                        { width: `${value}%`, backgroundColor: color },
-                    ]}
-                />
+                <View style={[styles.fill, { width: `${value}%`, backgroundColor: color }]} />
             </View>
             <Text style={styles.statValue}>{value}/100</Text>
         </View>
@@ -172,81 +167,53 @@ function Action({ emoji, label, onPress }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
+    container: { flex: 1, alignItems: 'center' },
+
+    verticalStats: {
+        position: 'absolute',
+        left: 10,
+        top: 120,
+        justifyContent: 'space-around',
+        height: 180,
+        padding: 8,
+        backgroundColor: 'rgba(255,255,255,0.8)',
+        borderRadius: 12,
     },
 
-    statsPanel: {
-        width: '92%',
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 16,
-        padding: 12,
-        marginTop: 10,
-    },
+    stat: { marginBottom: 8 },
+    statLabel: { fontWeight: '600' },
+    bar: { height: 10, backgroundColor: '#ddd', borderRadius: 6, overflow: 'hidden', marginVertical: 4 },
+    fill: { height: '100%' },
+    statValue: { fontSize: 12, color: '#444' },
 
-    stat: {
-        marginBottom: 8,
-    },
+    petArea: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    pet: { width: 260, height: 260, resizeMode: 'contain' },
+    heart: { position: 'absolute', fontSize: 28 },
 
-    statLabel: {
-        fontWeight: '600',
-    },
+    actionTray: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', paddingBottom: 20, paddingTop: 10, backgroundColor: 'rgba(255,255,255,0.9)' },
+    actionButton: { alignItems: 'center', padding: 10 },
+    emoji: { fontSize: 34 },
+    actionLabel: { fontSize: 14, fontWeight: '600' },
 
-    bar: {
-        height: 10,
-        backgroundColor: '#ddd',
-        borderRadius: 6,
-        overflow: 'hidden',
-        marginVertical: 4,
-    },
-
-    fill: {
-        height: '100%',
-    },
-
-    statValue: {
-        fontSize: 12,
-        color: '#444',
-    },
-
-    petArea: {
-        flex: 1,
+    // Picture Frame Style
+    frame: {
+        position: 'absolute',
+        top: 30,
+        right: 0,
+        width: 120,
+        height: 120,
+        borderWidth: 6,
+        borderColor: '#a0522d', // wood-like color
+        borderRadius: 8,
+        backgroundColor: '#f5f5dc',
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.5,
+        shadowRadius: 3,
+        elevation: 5,
     },
-
-    pet: {
-        width: 260,
-        height: 260,
-        resizeMode: 'contain',
-    },
-
-    heart: {
-        position: 'absolute',
-        fontSize: 28,
-    },
-
-    actionTray: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        paddingBottom: 20,
-        paddingTop: 10,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-    },
-
-    actionButton: {
-        alignItems: 'center',
-        padding: 10,
-    },
-
-    emoji: {
-        fontSize: 34,
-    },
-
-    actionLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
+    frameText: { color: '#333', fontSize: 12, textAlign: 'center' },
+    frameImage: { width: '100%', height: '100%', borderRadius: 6 },
 });
