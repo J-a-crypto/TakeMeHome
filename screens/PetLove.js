@@ -195,11 +195,16 @@ const createTargets = (world, count = 10) => {
 };
 
 // ------------------ Main Component ------------------
-export default function BouncyShooter({ navigation }) {
+export default function BouncyShooter({ navigation, route }) {
     const totalBalls = 10;
     const [ballCount, setBallCount] = useState(totalBalls);
     const { state, dispatch } = useContext(PetsContext);
-    const pet = state.pets.find(p => p.id === state.activePetId);
+    const { petId } = route.params;
+    const pet = state.pets.find(p => p.id === petId);
+    const [gameFinished, setGameFinished] = useState(false);
+    const [showEndMessage, setShowEndMessage] = useState(false);
+
+
 
     // ----- Audio Setup -----
     const ballSound = useRef(new Audio.Sound());
@@ -225,21 +230,36 @@ export default function BouncyShooter({ navigation }) {
         };
     }, []);
 
-    // ----- Active Pet Effect -----
-    useEffect(() => {
-        const activePet = state.pets.find((p) => p.id === state.activePetId);
-        if (!activePet) return;
-        if (activePet.happiness >= 100) {
-            dispatch({ type: 'CHANGE_PET_STAT', payload: { id: activePet.id, stat: 'happiness', delta: 0 } });
-            navigation.goBack();
-        }
-    }, [state.pets, state.activePetId]);
+
 
     const handleHappinessChange = (delta) => {
-        const activePetId = state.activePetId;
-        if (!activePetId) return;
-        dispatch({ type: 'CHANGE_PET_STAT', payload: { id: activePetId, stat: 'happiness', delta } });
+        if (!petId) return;
+
+        dispatch({
+            type: 'CHANGE_PET_STAT',
+            payload: {
+                id: petId,
+                stat: 'happiness',
+                delta,
+            },
+        });
     };
+    useEffect(() => {
+        if (!pet) return;
+
+        if (pet.happiness >= 100 && !gameFinished) {
+            setGameFinished(true);
+            setShowEndMessage(true);
+
+            // After message, go back to PetHome
+            setTimeout(() => {
+                setShowEndMessage(false);
+                navigation.navigate('PetHome', { petId });
+            }, 2500);
+        }
+    }, [pet?.happiness]);
+
+
 
     // ----- MatterJS Setup -----
     const engine = Matter.Engine.create({ enableSleeping: false });
@@ -425,11 +445,19 @@ export default function BouncyShooter({ navigation }) {
     };
 
     return (
+
         <ImageBackground
             source={pet.backgrounds.love}
             style={styles.container}
             resizeMode="cover"
         >
+            {showEndMessage && (
+                <View style={styles.endOverlay}>
+                    <Text style={styles.endText}>
+                        I love you so much c:
+                    </Text>
+                </View>
+            )}
             <View style={styles.topBar}>
                 <View style={styles.ballCircle}>
                     <Text style={styles.ballCount}>{ballCount}</Text>
@@ -438,7 +466,7 @@ export default function BouncyShooter({ navigation }) {
 
             <GameEngine
                 style={styles.gameContainer}
-                systems={[Physics, StuckBallSystem, Controls, BallCleanupSystem, (e, a) => TargetHitSystem(e, { ...a, onHappiness: handleHappinessChange }), MessageCleanupSystem]}
+                systems={gameFinished ? [] : [Physics, StuckBallSystem, Controls, BallCleanupSystem, (e, a) => TargetHitSystem(e, { ...a, onHappiness: handleHappinessChange }), MessageCleanupSystem]}
                 entities={{
                     physics: { engine, world },
                     ballCount: { count: totalBalls },
@@ -478,4 +506,23 @@ const styles = StyleSheet.create({
     },
     ballCount: { color: '#111', fontWeight: 'bold', fontSize: 20 },
     gameContainer: { flex: 1 },
+    endOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width,
+        height,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 20,
+    },
+    endText: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#fff',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+    },
+
 });

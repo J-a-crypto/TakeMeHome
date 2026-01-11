@@ -5,7 +5,7 @@ import { PET_TEMPLATES } from '../components/PetTemplates';
 export const PetsContext = createContext();
 
 const STAT_DECAY_SETTINGS = {
-    intervalMs: 1000 * 60 * 3, //  1 hour -> 1000 * 60 * 60,
+    intervalMs: 1000 * 60 * 2, //  1 hour -> 1000 * 60 * 60,
     rates: {
         hunger: 2,
         happiness: 1,
@@ -178,13 +178,17 @@ function reducer(state, action) {
 
             return {
                 ...state,
-                pets: state.pets.map(p =>
-                    p.id === id
-                        ? { ...p, [stat]: Math.max(0, Math.min(100, p[stat] + delta)) }
-                        : p
-                ),
+                pets: state.pets.map(pet => {
+                    if (pet.id !== id) return pet;
+
+                    return {
+                        ...pet,
+                        [stat]: Math.min(100, Math.max(0, pet[stat] + delta)),
+                    };
+                }),
             };
         }
+
 
         case 'DECAY_STATS': {
             const { rates, health } = STAT_DECAY_SETTINGS;

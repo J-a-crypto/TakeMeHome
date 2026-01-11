@@ -8,7 +8,6 @@ import {
     ImageBackground,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import Header from '../components/Header';
 import { PetsContext } from '../context/PetContext';
 import { SoundContext } from '../context/SoundContext';
 
@@ -16,6 +15,15 @@ const TOTAL_BITES = 4;
 const BAR_WIDTH = 260;
 const INDICATOR_WIDTH = 20;
 const AUTO_RETURN_DELAY = 2500;
+
+// 🍎 Apple images
+const APPLE_IMAGES = [
+    require('../assets/apple0.png'), // full apple
+    require('../assets/apple1.png'), // first bite
+    require('../assets/apple2.png'), // second bite
+    require('../assets/apple3.png'), // third bite
+    require('../assets/apple4.png'), // last bite
+];
 
 export default function PetHeal({ route, navigation }) {
     const { petId } = route.params;
@@ -29,13 +37,13 @@ export default function PetHeal({ route, navigation }) {
 
     const position = useRef(new Animated.Value(0)).current;
     const scale = useRef(new Animated.Value(1)).current;
-    const sparkleOpacity = useRef(new Animated.Value(0)).current;
-
     const petScale = useRef(new Animated.Value(1)).current;
     const petBounce = useRef(new Animated.Value(0)).current;
 
     const completionOpacity = useRef(new Animated.Value(0)).current;
     const completionTranslate = useRef(new Animated.Value(30)).current;
+    const healedScale = useRef(new Animated.Value(0.8)).current;
+
     const autoReturnTimer = useRef(null);
     const hasNavigated = useRef(false);
 
@@ -46,12 +54,14 @@ export default function PetHeal({ route, navigation }) {
     useEffect(() => {
         startIndicator();
         loadSounds();
+
         return () => {
             unloadSounds();
             if (autoReturnTimer.current) clearTimeout(autoReturnTimer.current);
         };
     }, []);
 
+    /* 🔊 SOUND SETUP */
     const loadSounds = async () => {
         biteSound.current = new Audio.Sound();
         missSound.current = new Audio.Sound();
@@ -74,16 +84,18 @@ export default function PetHeal({ route, navigation }) {
             await soundRef.current.setVolumeAsync(sfxVolume);
             await soundRef.current.replayAsync();
         } catch (e) {
-            console.log('Error playing sound', e);
+            console.log('Sound error', e);
         }
     };
 
+    /* NAVIGATION */
     const navigateHome = () => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;
         navigation.navigate('PetHome', { petId });
     };
 
+    /* GAME LOOP */
     const startIndicator = () => {
         position.setValue(0);
         Animated.loop(
@@ -107,13 +119,9 @@ export default function PetHeal({ route, navigation }) {
             Animated.timing(scale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
             Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }),
         ]).start();
-
-        Animated.sequence([
-            Animated.timing(sparkleOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-            Animated.timing(sparkleOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
-        ]).start();
     };
 
+    /* 🐾 PET REACTIONS */
     const petPerfect = () => {
         setSpeech('Yay! So tasty!');
         Animated.sequence([
@@ -133,17 +141,34 @@ export default function PetHeal({ route, navigation }) {
     const showCompletion = async () => {
         setSpeech('I feel much better!');
         await playSound(completeSound);
+
+        healedScale.setValue(0.8);
+
         Animated.parallel([
-            Animated.timing(completionOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-            Animated.spring(completionTranslate, { toValue: 0, friction: 6, useNativeDriver: true }),
+            Animated.timing(completionOpacity, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+            Animated.spring(completionTranslate, {
+                toValue: 0,
+                friction: 6,
+                useNativeDriver: true,
+            }),
+            Animated.spring(healedScale, {
+                toValue: 1,
+                friction: 5,
+                useNativeDriver: true,
+            }),
         ]).start();
+
         autoReturnTimer.current = setTimeout(navigateHome, AUTO_RETURN_DELAY);
     };
 
     const handleBite = () => {
         if (bites >= TOTAL_BITES) return;
 
-        position.stopAnimation(async value => {
+        position.stopAnimation(value => {
             const center = BAR_WIDTH / 2;
             const distance = Math.abs(value - center);
 
@@ -182,19 +207,10 @@ export default function PetHeal({ route, navigation }) {
             }
 
             setResult(text);
-            setTimeout(() => {
-                setResult(null);
-                if (bites + 1 < TOTAL_BITES) setSpeech('Feed me!');
-            }, 900);
+            setTimeout(() => setResult(null), 900);
 
             if (bites + 1 < TOTAL_BITES) startIndicator();
         });
-    };
-
-    // Use emotes based on healing progress
-    const getPetImage = () => {
-        if (!pet.emotes) return pet.image; // fallback
-        return bites >= TOTAL_BITES ? pet.emotes.healed : pet.emotes.healing;
     };
 
     return (
@@ -214,9 +230,9 @@ export default function PetHeal({ route, navigation }) {
                         <Animated.View style={[styles.indicator, { left: position }]} />
                     </View>
 
-                    <TouchableOpacity activeOpacity={0.9} onPress={handleBite}>
+                    <TouchableOpacity onPress={handleBite}>
                         <Animated.Image
-                            source={require('../assets/apple0.png')}
+                            source={APPLE_IMAGES[Math.min(bites, APPLE_IMAGES.length - 1)]}
                             style={[styles.apple, { transform: [{ scale }] }]}
                         />
                     </TouchableOpacity>
@@ -225,14 +241,14 @@ export default function PetHeal({ route, navigation }) {
 
             {result && <Text style={styles.result}>{result}</Text>}
 
-            {/* 🐾 PET */}
+            {/* 🐾 ACTIVE PET */}
             <View style={styles.petSlot} pointerEvents="none">
                 <View style={styles.speechBubble}>
                     <Text style={styles.speechText}>{speech}</Text>
                 </View>
 
                 <Animated.Image
-                    source={getPetImage()}
+                    source={pet.emotes.healing}
                     style={[
                         styles.petImage,
                         { transform: [{ scale: petScale }, { translateY: petBounce }] },
@@ -240,14 +256,27 @@ export default function PetHeal({ route, navigation }) {
                 />
             </View>
 
+            {/* 🎉 COMPLETION */}
             {bites >= TOTAL_BITES && (
                 <Animated.View style={[styles.completionOverlay, { opacity: completionOpacity }]}>
                     <Animated.View style={{ transform: [{ translateY: completionTranslate }], alignItems: 'center' }}>
+                        {pet.emotes?.healed && (
+                            <Animated.Image
+                                source={pet.emotes.healed}
+                                style={[
+                                    styles.healedPet,
+                                    { transform: [{ scale: healedScale }] },
+                                ]}
+                            />
+                        )}
+
                         <Text style={styles.completionTitle}>🍎 All Done!</Text>
-                        <Text style={styles.completionSubtitle}>I feel great!</Text>
+                        <Text style={styles.completionSubtitle}>I am strong AF now 💪</Text>
+
                         <TouchableOpacity style={styles.backButton} onPress={navigateHome}>
                             <Text style={styles.backButtonText}>Back to Pet Home</Text>
                         </TouchableOpacity>
+
                         <Text style={styles.autoText}>Returning automatically…</Text>
                     </Animated.View>
                 </Animated.View>
@@ -257,21 +286,22 @@ export default function PetHeal({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fffaf0', alignItems: 'center', justifyContent: 'center' },
+    container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     health: { position: 'absolute', top: 90, fontSize: 18, fontWeight: '600' },
     instructions: { fontSize: 16, marginBottom: 10 },
-    bar: { width: BAR_WIDTH, height: 14, backgroundColor: '#ddd', borderRadius: 8, marginBottom: 20, overflow: 'hidden' },
+    bar: { width: BAR_WIDTH, height: 14, backgroundColor: '#ddd', borderRadius: 8, marginBottom: 20 },
     perfectZone: { position: 'absolute', left: BAR_WIDTH / 2 - 15, width: 30, height: '100%', backgroundColor: '#81c784' },
     indicator: { position: 'absolute', width: INDICATOR_WIDTH, height: 22, backgroundColor: '#ff5252', borderRadius: 4, top: -4 },
     apple: { width: 220, height: 220, resizeMode: 'contain' },
     result: { position: 'absolute', bottom: 160, fontSize: 26, fontWeight: '700' },
 
-    petSlot: { position: 'absolute', bottom: 20, alignItems: 'center' },
-    petImage: { width: 120, height: 120, resizeMode: 'contain' },
-    speechBubble: { backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, marginBottom: 6 },
-    speechText: { fontSize: 14, fontWeight: '600' },
+    petSlot: { position: 'absolute', bottom: 0, alignItems: 'center' },
+    petImage: { width: 250, height: 250, resizeMode: 'contain' },
+    speechBubble: { backgroundColor: '#fff', padding: 10, borderRadius: 14, marginBottom: 0 },
+    speechText: { fontWeight: '600' },
 
     completionOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,250,240,0.95)', alignItems: 'center', justifyContent: 'center' },
+    healedPet: { width: 250, height: 250, resizeMode: 'contain', marginBottom: 16 },
     completionTitle: { fontSize: 30, fontWeight: '800' },
     completionSubtitle: { fontSize: 20, fontWeight: '600', color: '#4caf50', marginBottom: 24 },
     backButton: { backgroundColor: '#ff6f61', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 30 },

@@ -50,7 +50,7 @@ export default function PetListScreen({ navigation }) {
     };
 
     const getRarityColor = species => {
-        if (species === 'Dragon') return '#a855f7';
+        if (species === 'Pengu') return '#a855f7';
         if (species === 'Capybara') return '#22c55e';
         return '#ff6f61';
     };

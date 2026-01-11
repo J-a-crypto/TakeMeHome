@@ -2,10 +2,10 @@ export const PET_TEMPLATES = [
     {
         species: 'Dog', image: require('../assets/dog.png'),
         backgrounds: {
-            home: require('../assets/capybara_home.jpg'),
-            feed: require('../assets/capybara_home.jpg'),
+            home: require('../assets/dog_bg_home.jpg'),
+            feed: require('../assets/dog_bg_home.jpg'),
             love: require('../assets/dog_background_love.png'),
-            heal: require('../assets/capybara_home.jpg'),
+            heal: require('../assets/dog_bg_home.jpg'),
         },
         emotes: {
             healing: require('../assets/dog_heal.png'),
@@ -18,10 +18,10 @@ export const PET_TEMPLATES = [
     {
         species: 'Capybara', image: require('../assets/capybara.png'),
         backgrounds: {
-            home: require('../assets/capybara_home.jpg'),
-            feed: require('../assets/capybara_home.jpg'),
+            home: require('../assets/capybara_bg_home.jpg'),
+            feed: require('../assets/capybara_bg_home.jpg'),
             love: require('../assets/capybara_background_love.jpg'),
-            heal: require('../assets/capybara_home.jpg'),
+            heal: require('../assets/capybara_bg_home.jpg'),
         },
         emotes: {
             healing: require('../assets/capybara_heal.png'),
@@ -34,10 +34,10 @@ export const PET_TEMPLATES = [
     {
         species: 'Cat', image: require('../assets/cat.png'),
         backgrounds: {
-            home: require('../assets/capybara_home.jpg'),
-            feed: require('../assets/capybara_home.jpg'),
+            home: require('../assets/cat_bg_home.jpg'),
+            feed: require('../assets/cat_bg_home.jpg'),
             love: require('../assets/cat_background_love.png'),
-            heal: require('../assets/capybara_home.jpg'),
+            heal: require('../assets/cat_bg_home.jpg'),
         },
         emotes: {
             healing: require('../assets/cat_healing.png'),
@@ -50,10 +50,10 @@ export const PET_TEMPLATES = [
     {
         species: 'Cuy', image: require('../assets/cuy1.png'),
         backgrounds: {
-            home: require('../assets/capybara_home.jpg'),
-            feed: require('../assets/capybara_home.jpg'),
-            love: require('../assets/cuy_background_love.png'),
-            heal: require('../assets/capybara_home.jpg'),
+            home: require('../assets/cuy_bg_home.jpg'),
+            feed: require('../assets/cuy_bg_home.jpg'),
+            love: require('../assets/cuy_bg_love.png'),
+            heal: require('../assets/cuy_bg_home.jpg'),
         },
         emotes: {
             healing: require('../assets/cuyheal1.png'),
@@ -65,10 +65,10 @@ export const PET_TEMPLATES = [
     {
         species: 'Pengu', image: require('../assets/pengu.png'),
         backgrounds: {
-            home: require('../assets/capybara_home.jpg'),
-            feed: require('../assets/capybara_home.jpg'),
+            home: require('../assets/pengu_bg_home.jpg'),
+            feed: require('../assets/pengu_bg_home.jpg'),
             love: require('../assets/pengu_background_love.jpg'),
-            heal: require('../assets/capybara_home.jpg'),
+            heal: require('../assets/pengu_bg_home.jpg'),
         },
         emotes: {
             healing: require('../assets/pengu_heal.png'),

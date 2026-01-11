@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { deleteGame } from '../utils/storage';
+import { SoundContext } from '../context/SoundContext'
 
-export default function HomeScreen() {
-    const navigation = useNavigation();
+export default function HomeScreen({ navigation }) {
+    const { playRandomMusic } = useContext(SoundContext);
+    const handleStartGame = async () => {
+        await playRandomMusic();
+        navigation.navigate('PetList');
+    }
+    const handleResetGame = async () => {
+        await deleteGame();
+    };
 
     return (
         <ImageBackground
@@ -34,9 +42,14 @@ export default function HomeScreen() {
                 <View style={styles.buttons}>
                     <TouchableOpacity
                         style={styles.button}
-                        onPress={() => navigation.navigate('PetList')}
+                        onPress={handleStartGame}
                     >
                         <Text style={styles.buttonText}>See My Pets 🐶🐱</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={handleResetGame}>
+                        <Text style={styles.buttonText}>Reset</Text>
                     </TouchableOpacity>
                 </View>
             </View>

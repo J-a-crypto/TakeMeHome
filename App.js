@@ -22,13 +22,13 @@ export default function App() {
           <NavigationContainer>
             <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
               <Stack.Screen name="Home" component={HomeScreen} />
-              <Stack.Screen name="PetList" component={PetListScreen} />
-              <Stack.Screen name="PetHome" component={PetHome} />
+              <Stack.Screen name="PetList" component={PetListScreen} options={{ gestureEnabled: false }} />
+              <Stack.Screen name="PetHome" component={PetHome} options={{ gestureEnabled: false }} />
 
               <Stack.Screen
                 name="PetFeed"
                 component={PetFeed}
-                options={{ gestureEnabled: false }} // <-- disables swipe back
+                options={{ gestureEnabled: false }}
               />
               <Stack.Screen
                 name="PetLove"
